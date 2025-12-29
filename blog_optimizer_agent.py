@@ -1566,4 +1566,4 @@ if __name__ == "__main__":
                 website = "conholdate.com"
         
         # Default env to PROD
-        #send_api_report(metrics['status'], metrics, website, "PROD")
+        send_api_report(metrics['status'], metrics, website, "PROD")
