@@ -54,7 +54,7 @@ print(f"Using model: {MODEL_NAME}")
 
 # Configuration
 MIN_DAYS_BETWEEN_OPTIMIZATIONS = 90  # 3 months
-MIN_DAYS_SINCE_PUBLISH = 1  # 6 months (approximately 180 days)
+MIN_DAYS_SINCE_PUBLISH = 180  # 6 months (approximately 180 days)
 LOG_DIR = "logs"
 LOG_FILE_COMBINED = "all_domains_log.csv"
 
