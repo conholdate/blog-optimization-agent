@@ -3,15 +3,17 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-token = os.getenv("Token")
+token = os.getenv("PROFESSIONALIZE_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("Token")
+base_url = os.getenv("PROFESSIONALIZE_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "https://llm.professionalize.com/v1"
+llm_model = os.getenv("PROFESSIONALIZE_LLM_MODEL", "gpt-oss")
 
 client = OpenAI(
     api_key=token,
-    base_url="https://llm.professionalize.com/v1"
+    base_url=base_url
 )
 
 response = client.chat.completions.create(
-    model="gpt-oss",
+    model=llm_model,
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Which model are you?"}

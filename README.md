@@ -13,10 +13,12 @@ Quick Start
    pip install -r requirements.txt
    ```
 3. **Credentials**: place `client_secret.json` or `credentials.json` in the repo root. The scripts will serialize `credentials.json` after first auth if needed.
-4. **Environment**: create `.env` (or export vars) for the OpenAI agent scripts if you plan to use `blog_optimizer_agent.py`:
+4. **Environment**: create `.env` (or export vars) for the LLM agent scripts if you plan to use `blog_optimizer_agent.py`:
    ```
-   OPENAI_API_KEY=<token>
-   OPENAI_BASE_URL=https://llm.professionalize.com/v1
+   PROFESSIONALIZE_API_KEY=<token>
+   PROFESSIONALIZE_BASE_URL=https://llm.professionalize.com/v1
+   PROFESSIONALIZE_LLM_MODEL=gpt-oss
+   PROFESSIONALIZE_EMBEDDING_MODEL=qwen3-embedding-8b
    ```
    The Search Console scripts only need the Google credentials files.
 
@@ -40,7 +42,7 @@ What’s Inside
 
 Running the Blog Optimizer (blog_optimizer_agent.py)
 ----------------------------------------------------
-1) Ensure `.env` has `OPENAI_API_KEY` (and optional `OPENAI_BASE_URL`; default `https://llm.professionalize.com/v1`).
+1) Ensure `.env` has `PROFESSIONALIZE_API_KEY` (and optional `PROFESSIONALIZE_BASE_URL`; default `https://llm.professionalize.com/v1`). You can also set `PROFESSIONALIZE_LLM_MODEL` and `PROFESSIONALIZE_EMBEDDING_MODEL` if you need non-defaults.
 2) Place brand CSVs and content folders per `BRAND_CONFIG` in `blog_optimizer_agent.py`.
 3) Execute (example):
 ```bash
@@ -85,7 +87,7 @@ Automation (GitHub Actions)
   - aspose-cloud → `https://github.com/aspose-cloud/aspose-cloud-blog`
   - groupdocs → `https://github.com/groupdocs/groupdocs-blog`
   - groupdocs-cloud → `https://github.com/groupdocs-cloud/groupdocs-cloud-blog`
-  - Required secrets: `OPENAI_API_KEY` (and optional `OPENAI_BASE_URL` if you need a custom endpoint), `BLOG_OPTIMIZER_API_TOKEN`, `BLOGS_TEAM_TOKEN`.
+  - Required secrets: `PROFESSIONALIZE_API_KEY` (and optional `PROFESSIONALIZE_BASE_URL` if you need a custom endpoint), `BLOG_OPTIMIZER_API_TOKEN`, `BLOGS_TEAM_TOKEN`.
 - **GSC Sheets Sync** (`.github/workflows/gsc-sync.yml`): runs on the 1st and 15th of each month at 06:00 UTC and executes all six `GSC-*.py` exporters.
   - Required secret: `GSC_CLIENT_SECRET_JSON` containing the Google OAuth client JSON (as a single-line or multiline secret). Optional `GSC_CREDENTIALS_JSON` lets the workflows reuse a pre-authorized token file to avoid interactive auth.
   - If you need to override the default Apps Script URLs or Sheet IDs, add repo/environment secrets that match the env var names listed above (e.g., `ASPOSE_WEB_APP_URL`, `GROUPDOCS_SPREADSHEET_ID`).

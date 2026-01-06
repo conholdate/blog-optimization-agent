@@ -36,11 +36,11 @@ print("All imports successful")
 # ----------------------------------------------------
 load_dotenv()
 
-llmToken = os.getenv("OPENAI_API_KEY")
-llmBase = os.getenv("OPENAI_BASE_URL", "https://llm.professionalize.com/v1")
+llmToken = os.getenv("PROFESSIONALIZE_API_KEY") or os.getenv("OPENAI_API_KEY")
+llmBase = os.getenv("PROFESSIONALIZE_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "https://llm.professionalize.com/v1"
 
 if not llmToken:
-    print("ERROR: OPENAI_API_KEY not found in .env")
+    print("ERROR: PROFESSIONALIZE_API_KEY not found in .env")
     exit(1)
 
 print(f"LLM Endpoint: {llmBase}")
@@ -49,7 +49,8 @@ print(f"LLM Endpoint: {llmBase}")
 # 2. Initialize client
 # ----------------------------------------------------
 client = AsyncOpenAI(api_key=llmToken, base_url=llmBase)
-MODEL_NAME = "gpt-oss"  # Your endpoint's model
+MODEL_NAME = os.getenv("PROFESSIONALIZE_LLM_MODEL", "gpt-oss")
+EMBEDDING_MODEL = os.getenv("PROFESSIONALIZE_EMBEDDING_MODEL", "qwen3-embedding-8b")
 print(f"Using model: {MODEL_NAME}")
 
 # Configuration
