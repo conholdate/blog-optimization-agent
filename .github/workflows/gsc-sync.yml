@@ -1,0 +1,57 @@
+name: GSC Sheets Sync
+
+on:
+  schedule:
+    - cron: "0 6 1,15 * *" # 1st and 15th of every month at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: blog.aspose.com
+            script: GSC-aspose.com.py
+          - name: blog.aspose.cloud
+            script: GSC-aspose.cloud.py
+          - name: blog.conholdate.com
+            script: GSC-conholdate.com.py
+          - name: blog.conholdate.cloud
+            script: GSC-conholdate.cloud.py
+          - name: blog.groupdocs.com
+            script: GSC-groupdocs.com.py
+          - name: blog.groupdocs.cloud
+            script: GSC-groupdocs.cloud.py
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pandas searchconsole google-auth google-auth-oauthlib google-auth-httplib2
+
+      - name: Write Google OAuth files
+        env:
+          GSC_CLIENT_SECRET_JSON: ${{ secrets.GSC_CLIENT_SECRET_JSON }}
+          GSC_CREDENTIALS_JSON: ${{ secrets.GSC_CREDENTIALS_JSON }}
+        run: |
+          [ -n "$GSC_CLIENT_SECRET_JSON" ] || { echo "Set GSC_CLIENT_SECRET_JSON secret to the Google OAuth client JSON"; exit 1; }
+          printf '%s' "$GSC_CLIENT_SECRET_JSON" > client_secret.json
+          if [ -n "$GSC_CREDENTIALS_JSON" ]; then
+            printf '%s' "$GSC_CREDENTIALS_JSON" > credentials.json
+          fi
+
+      - name: Run ${{ matrix.name }} export
+        run: python ${{ matrix.script }}

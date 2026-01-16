@@ -36,11 +36,11 @@ print("All imports successful")
 # ----------------------------------------------------
 load_dotenv()
 
-llmToken = os.getenv("PROFESSIONALIZE_API_KEY") or os.getenv("OPENAI_API_KEY")
-llmBase = os.getenv("PROFESSIONALIZE_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "https://llm.professionalize.com/v1"
+llmToken = os.getenv("PROFESSIONALIZE_API_KEY")
+llmBase = os.getenv("PROFESSIONALIZE_BASE_URL", "https://llm.professionalize.com/v1")
 
 if not llmToken:
-    print("ERROR: PROFESSIONALIZE_API_KEY not found in .env")
+    print("ERROR: PROFESSIONALIZE_API_KEY not found in environment (.env or secrets).")
     exit(1)
 
 print(f"LLM Endpoint: {llmBase}")

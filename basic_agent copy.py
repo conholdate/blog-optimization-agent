@@ -7,8 +7,8 @@ os.environ["OPENAI_TRACING_ENABLED"] = "false"
 
 load_dotenv()
 
-llmToken = os.getenv("PROFESSIONALIZE_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("Token")
-llmBase = os.getenv("PROFESSIONALIZE_BASE_URL") or os.getenv("OPENAI_BASE_URL") or "https://llm.professionalize.com/v1"
+llmToken = os.getenv("PROFESSIONALIZE_API_KEY")
+llmBase = os.getenv("PROFESSIONALIZE_BASE_URL", "https://llm.professionalize.com/v1")
 llmModel = os.getenv("PROFESSIONALIZE_LLM_MODEL", "gpt-oss")
 
 client = AsyncOpenAI(
