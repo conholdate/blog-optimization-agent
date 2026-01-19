@@ -13,26 +13,33 @@ jobs:
     name: ${{ matrix.brand }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - brand: conholdate
             repo: conholdate/conholdate-blog
             path: conholdate-blog
+            default_branch: main
           - brand: conholdate-cloud
             repo: conholdate-cloud/blog.conholdate.cloud
             path: blog.conholdate.cloud
+            default_branch: main
           - brand: aspose
             repo: Aspose/aspose-blog
             path: aspose-blog
+            default_branch: master
           - brand: aspose-cloud
             repo: aspose-cloud/aspose-cloud-blog
             path: aspose-cloud-blog
+            default_branch: master
           - brand: groupdocs
             repo: groupdocs/groupdocs-blog
             path: groupdocs-blog
+            default_branch: master
           - brand: groupdocs-cloud
             repo: groupdocs-cloud/groupdocs-cloud-blog
             path: groupdocs-cloud-blog
+            default_branch: master
 
     steps:
       - name: Checkout repository
@@ -55,7 +62,14 @@ jobs:
           sleep "$delay"
 
       - name: Fetch blog content
-        run: git clone --depth=1 https://github.com/${{ matrix.repo }} "${{ matrix.path }}"
+        env:
+          BLOG_REPOS_TOKEN: ${{ secrets.BLOG_REPOS_TOKEN }}
+        run: |
+          if [ -n "$BLOG_REPOS_TOKEN" ]; then
+            git clone --depth=1 --branch "${{ matrix.default_branch }}" https://x-access-token:${BLOG_REPOS_TOKEN}@github.com/${{ matrix.repo }} "${{ matrix.path }}"
+          else
+            git clone --depth=1 --branch "${{ matrix.default_branch }}" https://github.com/${{ matrix.repo }} "${{ matrix.path }}"
+          fi
 
       - name: Run optimizer
         env:
