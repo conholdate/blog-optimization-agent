@@ -61,8 +61,6 @@ jobs:
         run: |
           git config user.name "Optimizer Agent"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "${GITHUB_REF_NAME}"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
           git add -f csv
           git status --short
           if git diff --cached --quiet; then
@@ -70,4 +68,5 @@ jobs:
             exit 0
           fi
           git commit -m "Update GSC CSVs for ${{ matrix.name }}"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
