@@ -59,7 +59,7 @@ jobs:
 
       - name: Commit CSV outputs
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name "Optimizer Agent"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin "${GITHUB_REF_NAME}"
           git pull --rebase origin "${GITHUB_REF_NAME}"
