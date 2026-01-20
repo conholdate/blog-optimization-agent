@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "30 2 * * *" # Daily at 02:30 UTC with in-job jitter
   workflow_dispatch:
+    inputs:
+      skip_jitter:
+        description: "Skip random delay (useful for manual testing)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -56,6 +61,7 @@ jobs:
           python -m pip install -r requirements.txt pandas
 
       - name: Random delay (jitter the daily run)
+        if: ${{ github.event_name == 'schedule' || inputs.skip_jitter == false }}
         run: |
           delay=$(( RANDOM % 3600 ))
           echo "Sleeping for ${delay}s to randomize today's start time..."
