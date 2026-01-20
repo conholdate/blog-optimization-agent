@@ -1557,14 +1557,15 @@ if __name__ == "__main__":
         print("="*60)
         
         # Determine website based on brand
-        #website = "conholdate.com"  # default
-        if args.brand:
-            if args.brand == 'aspose':
-                website = "aspose.com"
-            elif args.brand == 'groupdocs':
-                website = "groupdocs.com"
-            elif args.brand == 'conholdate':
-                website = "conholdate.com"
+        brand_to_website = {
+            "aspose": "aspose.com",
+            "aspose-cloud": "aspose.cloud",
+            "conholdate": "conholdate.com",
+            "conholdate-cloud": "conholdate.cloud",
+            "groupdocs": "groupdocs.com",
+            "groupdocs-cloud": "groupdocs.cloud",
+        }
+        website = brand_to_website.get(args.brand, "unknown")
         
         # Default env to PROD
         send_api_report(metrics['status'], metrics, website, "PROD")
