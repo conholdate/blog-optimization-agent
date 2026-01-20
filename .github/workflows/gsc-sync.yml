@@ -61,6 +61,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
           git add -f csv
           git status --short
           if git diff --cached --quiet; then
@@ -68,4 +70,4 @@ jobs:
             exit 0
           fi
           git commit -m "Update GSC CSVs for ${{ matrix.name }}"
-          git push
+          git push origin "HEAD:${GITHUB_REF_NAME}"
