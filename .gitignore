@@ -1,0 +1,15 @@
+__pycache__/
+*.py[oc]
+*.log
+.DS_Store
+.env
+.env*
+client_secret.json
+credentials.json
+logs/
+optimized-posts/
+*.egg-info
+build/
+dist/
+wheels/
+.venv
