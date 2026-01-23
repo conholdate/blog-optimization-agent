@@ -156,3 +156,26 @@ jobs:
           BLOGS_TEAM_TOKEN: ${{ secrets.BLOGS_TEAM_TOKEN }}
         run: |
           python blog_optimizer_agent.py --brand ${{ matrix.brand }} --sourcepath "${{ github.workspace }}/${{ matrix.path }}"
+
+      - name: Commit optimized content back to blog repo
+        if: ${{ steps.select.outputs.run_this == 'true' }}
+        env:
+          BLOG_REPOS_TOKEN: ${{ secrets.BLOG_REPOS_TOKEN }}
+        run: |
+          if [ -z "$BLOG_REPOS_TOKEN" ]; then
+            echo "BLOG_REPOS_TOKEN not set; skipping push back to ${GITHUB_REPOSITORY}."
+            exit 0
+          fi
+
+          git -C "${{ matrix.path }}" config user.name "optimizer-agent"
+          git -C "${{ matrix.path }}" config user.email "optimizer-agent@users.noreply.github.com"
+          git -C "${{ matrix.path }}" add -A
+
+          if git -C "${{ matrix.path }}" diff --cached --quiet; then
+            echo "No content changes to commit for ${{ matrix.brand }}."
+            exit 0
+          fi
+
+          git -C "${{ matrix.path }}" commit -m "Blog Optimization Agent (${{ matrix.brand }})"
+          git -C "${{ matrix.path }}" pull --rebase origin "${{ matrix.default_branch }}"
+          git -C "${{ matrix.path }}" push origin "HEAD:${{ matrix.default_branch }}"
