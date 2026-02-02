@@ -515,8 +515,8 @@ def has_language_code_prefix(url: str):
         # Pattern 1: 2-letter codes (most language codes)
         if len(first_segment) == 2:
             # Exclude common English words
-            english_words = {'as', 'at', 'by', 'in', 'of', 'on', 'to', 'up', 
-                           'us', 'we', 'it', 'is', 'be', 'he', 'or', 'an'}
+            english_words = {'as', 'at', 'by', 'in', 'of', 'on', 'to', 'up',
+                           'us', 'we', 'is', 'be', 'or', 'an'}
             if first_segment in english_words:
                 return False
             # Most 2-letter segments are language codes
@@ -1406,10 +1406,12 @@ async def main(args):
             today_optimized = count_optimizations_today_for_domain(domain_info, limit_settings)
                 
             for i, url in enumerate(data['urls'], 1):
-                # Skip all URLs if daily limit reached for this domain (no individual messages)
+                # Stop iterating once the daily limit is reached (saves time on huge URL lists)
                 if limit_reached:
-                    domain_results['limit_reached'] += 1
-                    continue
+                    remaining = len(data['urls']) - i + 1
+                    domain_results['limit_reached'] += remaining
+                    print(f"  ⚠️  Daily limit reached for {domain_key}. Skipping remaining {remaining} URLs.")
+                    break
                 
                 # Check if we're approaching the limit (only check for real optimization candidates)
                 # We'll update this after actual optimizations
@@ -1439,7 +1441,7 @@ async def main(args):
                 if limit_settings['limit_per_domain'] > 0 and today_optimized >= limit_settings['limit_per_domain']:
                     print(f"  ⚠️  Daily limit reached for {domain_key}. Skipping remaining URLs.")
                     limit_reached = True
-                    domain_results['limit_reached'] += 1
+                    # Remaining URLs will be counted and skipped at loop start
                     continue
                 
                 # Optimize the post
