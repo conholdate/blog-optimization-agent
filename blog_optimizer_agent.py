@@ -326,12 +326,12 @@ def can_optimize_slug(domain_info: dict, slug: str, publish_date = None):
                     # Skip this check if we can't parse the date
                     post_date = None
                     
+            elif isinstance(publish_date, datetime):
+                # Convert datetime to date (datetime is also a date subclass, so check first)
+                post_date = publish_date.date()
             elif isinstance(publish_date, date):
                 # Already a date object
                 post_date = publish_date
-            elif isinstance(publish_date, datetime):
-                # Convert datetime to date
-                post_date = publish_date.date()
             else:
                 # Unknown format, skip this check
                 print(f"Warning: Unknown publish date format: {type(publish_date)}")
