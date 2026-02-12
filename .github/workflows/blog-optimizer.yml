@@ -1,8 +1,6 @@
 name: Daily Blog Optimizer
 
 on:
-  schedule:
-    - cron: "30 2 * * *" # Daily at 02:30 UTC with in-job jitter
   workflow_dispatch:
     inputs:
       skip_jitter:
