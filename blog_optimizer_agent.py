@@ -1118,6 +1118,38 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
     current_title = metadata.get('title', 'Untitled Blog Post')
     current_date = metadata.get('date', '')
     current_lastmod = metadata.get('lastmod', '')
+
+    # Extra guard: if lastmod was updated recently, skip even if logs are stale/missing.
+    if current_lastmod:
+        lastmod_date = None
+        try:
+            if isinstance(current_lastmod, datetime):
+                lastmod_date = current_lastmod.date()
+            elif isinstance(current_lastmod, date):
+                lastmod_date = current_lastmod
+            elif isinstance(current_lastmod, str):
+                for date_format in ('%Y-%m-%d', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S'):
+                    try:
+                        if '%z' in date_format:
+                            lastmod_date = datetime.strptime(current_lastmod, date_format).date()
+                        else:
+                            lastmod_date = datetime.strptime(current_lastmod, date_format).date()
+                        break
+                    except ValueError:
+                        continue
+        except Exception:
+            lastmod_date = None
+
+        if lastmod_date:
+            today = date.today()
+            days_since_lastmod = (today - lastmod_date).days
+            if days_since_lastmod < 0:
+                print(f"  Skipping: lastmod is in the future ({current_lastmod}).")
+                return False, "skipped"
+            if days_since_lastmod < MIN_DAYS_BETWEEN_OPTIMIZATIONS:
+                remaining_days = MIN_DAYS_BETWEEN_OPTIMIZATIONS - days_since_lastmod
+                print(f"  Skipping: lastmod updated {days_since_lastmod} days ago. Can optimize again in {remaining_days} days. (front matter)")
+                return False, "skipped"
     
     # Prepare strict instructions for LLM
     prompt = f"""You are an SEO content optimizer. Your task is to optimize ONLY the content of this blog post for SEO while PRESERVING EXACT formatting.
