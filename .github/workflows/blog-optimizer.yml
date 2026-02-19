@@ -146,7 +146,7 @@ jobs:
       - name: Run optimizer
         if: ${{ steps.select.outputs.run_this == 'true' }}
         env:
-          PROFESSIONALIZE_API_KEY: ${{ secrets.PROFESSIONALIZE_API_KEY }}
+          PROFESSIONALIZE_API_KEY_OPTIMIZER: ${{ secrets.PROFESSIONALIZE_API_KEY_OPTIMIZER }}
           PROFESSIONALIZE_BASE_URL: ${{ secrets.PROFESSIONALIZE_BASE_URL }}
           PROFESSIONALIZE_LLM_MODEL: ${{ secrets.PROFESSIONALIZE_LLM_MODEL }}
           PROFESSIONALIZE_EMBEDDING_MODEL: ${{ secrets.PROFESSIONALIZE_EMBEDDING_MODEL }}

@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-token = os.getenv("PROFESSIONALIZE_API_KEY")
+# Prefer per-agent key; fall back to legacy name for compatibility.
+token = os.getenv("PROFESSIONALIZE_API_KEY_OPTIMIZER") or os.getenv("PROFESSIONALIZE_API_KEY")
 base_url = os.getenv("PROFESSIONALIZE_BASE_URL", "https://llm.professionalize.com/v1")
 llm_model = os.getenv("PROFESSIONALIZE_LLM_MODEL", "gpt-oss")
 
