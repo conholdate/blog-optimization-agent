@@ -304,6 +304,8 @@ def can_optimize_slug(domain_info: dict, slug: str, publish_date = None):
                 date_formats = [
                     '%Y-%m-%d',                    # 2025-10-02
                     '%a, %d %b %Y %H:%M:%S %z',   # Thu, 02 Oct 2025 00:11:25 +0000
+                    '%a, %d %b %Y %H:%M:%S GMT',  # Thu, 31 Oct 2024 00:16:02 GMT
+                    '%a, %d %b %Y %H:%M:%S %Z',   # Thu, 31 Oct 2024 00:16:02 UTC/GMT
                     '%d %b %Y',                    # 02 Oct 2025
                     '%b %d, %Y',                   # Oct 02, 2025
                     '%m/%d/%Y',                    # 10/02/2025
@@ -321,6 +323,15 @@ def can_optimize_slug(domain_info: dict, slug: str, publish_date = None):
                         break  # Successfully parsed
                     except ValueError:
                         continue
+
+                # Extra fallback: handle "GMT" by converting to +0000
+                if not post_date and publish_date.endswith(" GMT"):
+                    try:
+                        normalized = publish_date[:-4] + " +0000"
+                        dt = datetime.strptime(normalized, '%a, %d %b %Y %H:%M:%S %z')
+                        post_date = dt.date()
+                    except ValueError:
+                        pass
                 
                 if not post_date:
                     print(f"Warning: Could not parse publish date: {publish_date}")
@@ -556,6 +567,9 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
         env: Environment - "PROD" or "DEV" (default: "PROD")
     """
     try:
+        if status != "success":            
+            return
+
         # Create GMT+5 timezone (Pakistan Standard Time)
         gmt5 = timezone(timedelta(hours=5))
         
