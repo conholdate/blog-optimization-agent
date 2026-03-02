@@ -1097,14 +1097,11 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
     # Read original content from .md file
     with open(md_file_path, 'r', encoding='utf-8') as f:
         original_content = f.read()
-    
-    # Ensure lastmod field exists and update it to today's date
-    content_with_updated_lastmod = ensure_and_update_lastmod_field(original_content)
-    
-    # Extract YAML front matter for reference
+
+    # Extract YAML front matter from the ORIGINAL content (before mutating lastmod)
     yaml_pattern = r'^---\s*\n(.*?)\n---\s*\n(.*)'
-    match = re.match(yaml_pattern, content_with_updated_lastmod, re.DOTALL)
-    
+    match = re.match(yaml_pattern, original_content, re.DOTALL)
+
     if match:
         yaml_text, body = match.groups()
         try:
@@ -1113,27 +1110,24 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
             metadata = {}
     else:
         metadata = {}
-        body = content_with_updated_lastmod
-    
+        body = original_content
+
     current_title = metadata.get('title', 'Untitled Blog Post')
     current_date = metadata.get('date', '')
-    current_lastmod = metadata.get('lastmod', '')
+    original_lastmod = metadata.get('lastmod', '')
 
     # Extra guard: if lastmod was updated recently, skip even if logs are stale/missing.
-    if current_lastmod:
+    if original_lastmod:
         lastmod_date = None
         try:
-            if isinstance(current_lastmod, datetime):
-                lastmod_date = current_lastmod.date()
-            elif isinstance(current_lastmod, date):
-                lastmod_date = current_lastmod
-            elif isinstance(current_lastmod, str):
+            if isinstance(original_lastmod, datetime):
+                lastmod_date = original_lastmod.date()
+            elif isinstance(original_lastmod, date):
+                lastmod_date = original_lastmod
+            elif isinstance(original_lastmod, str):
                 for date_format in ('%Y-%m-%d', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S'):
                     try:
-                        if '%z' in date_format:
-                            lastmod_date = datetime.strptime(current_lastmod, date_format).date()
-                        else:
-                            lastmod_date = datetime.strptime(current_lastmod, date_format).date()
+                        lastmod_date = datetime.strptime(original_lastmod, date_format).date()
                         break
                     except ValueError:
                         continue
@@ -1144,12 +1138,29 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
             today = date.today()
             days_since_lastmod = (today - lastmod_date).days
             if days_since_lastmod < 0:
-                print(f"  Skipping: lastmod is in the future ({current_lastmod}).")
+                print(f"  Skipping: lastmod is in the future ({original_lastmod}).")
                 return False, "skipped"
             if days_since_lastmod < MIN_DAYS_BETWEEN_OPTIMIZATIONS:
                 remaining_days = MIN_DAYS_BETWEEN_OPTIMIZATIONS - days_since_lastmod
                 print(f"  Skipping: lastmod updated {days_since_lastmod} days ago. Can optimize again in {remaining_days} days. (front matter)")
                 return False, "skipped"
+
+    # Ensure lastmod field exists and update it to today's date (after passing guards)
+    content_with_updated_lastmod = ensure_and_update_lastmod_field(original_content)
+
+    # Re-parse YAML from updated content so the prompt preserves the updated lastmod.
+    match = re.match(yaml_pattern, content_with_updated_lastmod, re.DOTALL)
+    if match:
+        yaml_text, body = match.groups()
+        try:
+            metadata = yaml.safe_load(yaml_text) or {}
+        except:
+            metadata = {}
+    else:
+        metadata = {}
+        body = content_with_updated_lastmod
+
+    current_lastmod = metadata.get('lastmod', '')
     
     # Prepare strict instructions for LLM
     prompt = f"""You are an SEO content optimizer. Your task is to optimize ONLY the content of this blog post for SEO while PRESERVING EXACT formatting.
