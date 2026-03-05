@@ -1,0 +1,19 @@
+name: Sync GitHub to GitLab
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Push to GitLab
+        run: |
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git
+          git push gitlab main
