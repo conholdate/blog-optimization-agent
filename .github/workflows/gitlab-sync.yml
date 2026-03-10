@@ -14,6 +14,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Mirror to GitLab
+      - name: Push to GitLab
         run: |
-          git push --mirror https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git
+          git push gitlab main --force
