@@ -1,5 +1,5 @@
 Blog Optimizer Agent & GSC Utilities
-============================================
+===========================================
 
 This repo centers on an async **Blog Optimizer** that cleans and governs re-optimization of blog posts across Aspose, Conholdate, and GroupDocs. It also includes lightweight Google Search Console (GSC) scripts that export domain data to Google Sheets with CSV backups.
 
