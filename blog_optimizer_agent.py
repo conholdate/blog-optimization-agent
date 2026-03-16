@@ -567,8 +567,17 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
         env: Environment - "PROD" or "DEV" (default: "PROD")
     """
     try:
-        if status != "success":            
-            return
+        print("\n" + "="*60)
+        print("METRICS REPORTING TRACE")
+        print("="*60)
+        print(f"Incoming status: {status}")
+        print(f"Incoming website: {website}")
+        print(f"Incoming env: {env}")
+        print(f"Incoming metrics: {json.dumps(metrics, default=str)}")
+
+        if status != "success":
+            print("Skipping metrics because of status.")
+            return False
 
         # Create GMT+5 timezone (Pakistan Standard Time)
         gmt5 = timezone(timedelta(hours=5))
@@ -609,13 +618,22 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             "run_duration_ms": metrics.get('run_duration_ms', 0)
         }
         
-        if not API_TOKEN and not BLOGS_TEAM_TOKEN:
-            print("\nSkipping API reports because BLOG_OPTIMIZER_API_TOKEN and BLOGS_TEAM_TOKEN are not set.")
-            return
+        has_api_token = bool(API_TOKEN)
+        has_blogs_team_token = bool(BLOGS_TEAM_TOKEN)
+        print(f"Token check: BLOG_OPTIMIZER_API_TOKEN set={has_api_token}, BLOGS_TEAM_TOKEN set={has_blogs_team_token}")
+
+        if not has_api_token and not has_blogs_team_token:
+            print("Skipping API reports because BLOG_OPTIMIZER_API_TOKEN and BLOGS_TEAM_TOKEN are not set.")
+            return False
+
+        original_ok = None
+        blogs_team_ok = None
         
         # Send to original endpoint (if configured)
-        if API_TOKEN:
-            print(f"\nSending to Original Endpoint...")
+        if has_api_token:
+            original_url = f"{API_ENDPOINT}?token=<redacted>"
+            print(f"\nSending to Original Endpoint: {original_url}")
+            print(f"Original payload keys: {list(common_payload.keys())}")
             response1 = requests.post(
                 f"{API_ENDPOINT}?token={API_TOKEN}",
                 headers={"Content-Type": "application/json"},
@@ -626,8 +644,10 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             print(f"Original Endpoint Status: {response1.status_code}")
             if response1.status_code == 200:
                 print("✓ Original endpoint report sent successfully!")
+                original_ok = True
             else:
-                print(f"✗ Original endpoint failed: {response1.text}")
+                print(f"✗ Original endpoint failed: {response1.text[:500]}")
+                original_ok = False
         else:
             print("\nSkipping Original Endpoint because BLOG_OPTIMIZER_API_TOKEN is not set.")
         
@@ -636,8 +656,10 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
         blogs_team_payload["run_env"] = env  # Will be "PROD" by default
         
         # Send to Blogs Team Metrics endpoint (if configured)
-        if BLOGS_TEAM_TOKEN:
-            print(f"\nSending to Blogs Team Metrics Endpoint...")
+        if has_blogs_team_token:
+            blogs_team_url = f"{BLOGS_TEAM_ENDPOINT}?token=<redacted>"
+            print(f"\nSending to Blogs Team Metrics Endpoint: {blogs_team_url}")
+            print(f"Blogs Team payload keys: {list(blogs_team_payload.keys())}")
             response2 = requests.post(
                 f"{BLOGS_TEAM_ENDPOINT}?token={BLOGS_TEAM_TOKEN}",
                 headers={"Content-Type": "application/json"},
@@ -649,8 +671,10 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             if response2.status_code == 200:
                 print("✓ Blogs Team Metrics report sent successfully!")
                 print(f"  run_env: {blogs_team_payload['run_env']}")
+                blogs_team_ok = True
             else:
-                print(f"✗ Blogs Team Metrics failed: {response2.text}")
+                print(f"✗ Blogs Team Metrics failed: {response2.text[:500]}")
+                blogs_team_ok = False
         else:
             print("\nSkipping Blogs Team Metrics because BLOGS_TEAM_TOKEN is not set.")
         
@@ -670,11 +694,16 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
         print(f"Duration: {metrics.get('run_duration_ms', 0)}ms")
         print("="*60)
         
-        # Return both responses for error handling if needed
-        return response1.status_code == 200 and response2.status_code == 200
+        configured_results = [r for r in [original_ok, blogs_team_ok] if r is not None]
+        if not configured_results:
+            print("No API endpoint was configured with a token; nothing was sent.")
+            return False
+        all_ok = all(configured_results)
+        print(f"Metrics reporting result: success={all_ok}, endpoint_results={configured_results}")
+        return all_ok
             
     except Exception as e:
-        print(f"Error sending API reports: {e}")
+        print(f"Error sending API reports: {type(e).__name__}: {e}")
         return False
 
 # ----------------------------------------------------
@@ -1591,6 +1620,8 @@ async def main(args):
         run_duration_ms = int((end_time - start_time) * 1000)
         metrics['run_duration_ms'] = run_duration_ms
 
+    return metrics
+
 # ----------------------------------------------------
 # 9. Run
 # ----------------------------------------------------
@@ -1610,6 +1641,8 @@ if __name__ == "__main__":
     # Run the main function and get metrics
     metrics = asyncio.run(main(args))
     
+    print(f"Main returned metrics: {json.dumps(metrics, default=str)}")
+
     # Send API report after main completes
     if metrics:
         print("\n" + "="*60)
@@ -1629,3 +1662,5 @@ if __name__ == "__main__":
         
         # Default env to PROD
         send_api_report(metrics['status'], metrics, website, "PROD")
+    else:
+        print("Skipping API report because main() returned no metrics object.")
