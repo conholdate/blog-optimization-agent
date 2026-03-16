@@ -19,18 +19,18 @@ on:
         description: "Run aspose"
         type: boolean
         default: true
-      run_aspose_cloud:
-        description: "Run aspose-cloud"
-        type: boolean
-        default: true
-      run_groupdocs:
-        description: "Run groupdocs"
-        type: boolean
-        default: true
-      run_groupdocs_cloud:
-        description: "Run groupdocs-cloud"
-        type: boolean
-        default: true
+      # run_aspose_cloud:
+      #   description: "Run aspose-cloud"
+      #   type: boolean
+      #   default: true
+      # run_groupdocs:
+      #   description: "Run groupdocs"
+      #   type: boolean
+      #   default: true
+      # run_groupdocs_cloud:
+      #   description: "Run groupdocs-cloud"
+      #   type: boolean
+      #   default: true
 
 permissions:
   contents: write
@@ -58,21 +58,21 @@ jobs:
             path: aspose-blog
             default_branch: master
             input_name: run_aspose
-          - brand: aspose-cloud
-            repo: aspose-cloud/aspose-cloud-blog
-            path: aspose-cloud-blog
-            default_branch: master
-            input_name: run_aspose_cloud
-          - brand: groupdocs
-            repo: groupdocs/groupdocs-blog
-            path: groupdocs-blog
-            default_branch: master
-            input_name: run_groupdocs
-          - brand: groupdocs-cloud
-            repo: groupdocs-cloud/groupdocs-cloud-blog
-            path: groupdocs-cloud-blog
-            default_branch: master
-            input_name: run_groupdocs_cloud
+          # - brand: aspose-cloud
+          #   repo: aspose-cloud/aspose-cloud-blog
+          #   path: aspose-cloud-blog
+          #   default_branch: master
+          #   input_name: run_aspose_cloud
+          # - brand: groupdocs
+          #   repo: groupdocs/groupdocs-blog
+          #   path: groupdocs-blog
+          #   default_branch: master
+          #   input_name: run_groupdocs
+          # - brand: groupdocs-cloud
+          #   repo: groupdocs-cloud/groupdocs-cloud-blog
+          #   path: groupdocs-cloud-blog
+          #   default_branch: master
+          #   input_name: run_groupdocs_cloud
 
     steps:
       - name: Decide whether to run this brand
@@ -93,15 +93,15 @@ jobs:
             run_aspose)
               value="${{ inputs.run_aspose }}"
               ;;
-            run_aspose_cloud)
-              value="${{ inputs.run_aspose_cloud }}"
-              ;;
-            run_groupdocs)
-              value="${{ inputs.run_groupdocs }}"
-              ;;
-            run_groupdocs_cloud)
-              value="${{ inputs.run_groupdocs_cloud }}"
-              ;;
+            # run_aspose_cloud)
+            #   value="${{ inputs.run_aspose_cloud }}"
+            #   ;;
+            # run_groupdocs)
+            #   value="${{ inputs.run_groupdocs }}"
+            #   ;;
+            # run_groupdocs_cloud)
+            #   value="${{ inputs.run_groupdocs_cloud }}"
+            #   ;;
             *)
               value="false"
               ;;
