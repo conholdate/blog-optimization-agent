@@ -617,7 +617,9 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             "items_succeeded": metrics.get('items_succeeded', 0),
             "run_duration_ms": metrics.get('run_duration_ms', 0),
             "token_usage": metrics.get('token_usage', 0),
-            "api_call_count": metrics.get('api_call_count', 0)
+            "api_call_count": metrics.get('api_call_count', 0),
+            # Backward-compatible alias for endpoints expecting pluralized key.
+            "api_calls_count": metrics.get('api_call_count', 0)
         }
         
         has_api_token = bool(API_TOKEN)
@@ -645,11 +647,35 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             
             print(f"Original Endpoint Status: {response1.status_code}")
             if response1.status_code == 200:
-                print("✓ Original endpoint report sent successfully!")
                 response1_text = (response1.text or "").strip()
+                logical_error = False
                 if response1_text:
                     print(f"Original endpoint response: {response1_text[:500]}")
-                original_ok = True
+                    try:
+                        parsed = json.loads(response1_text)
+                        if isinstance(parsed, dict):
+                            if parsed.get("error"):
+                                logical_error = True
+                            parsed_status = parsed.get("status")
+                            if parsed_status is not None:
+                                try:
+                                    if int(parsed_status) >= 400:
+                                        logical_error = True
+                                except (TypeError, ValueError):
+                                    pass
+                            if parsed.get("success") is False:
+                                logical_error = True
+                    except json.JSONDecodeError:
+                        lower_body = response1_text.lower()
+                        if "invalid token" in lower_body or "error" in lower_body:
+                            logical_error = True
+
+                if logical_error:
+                    print("✗ Original endpoint returned an application-level error despite HTTP 200.")
+                    original_ok = False
+                else:
+                    print("✓ Original endpoint report sent successfully!")
+                    original_ok = True
             else:
                 print(f"✗ Original endpoint failed: {response1.text[:500]}")
                 original_ok = False
@@ -674,12 +700,36 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             
             print(f"Blogs Team Status: {response2.status_code}")
             if response2.status_code == 200:
-                print("✓ Blogs Team Metrics report sent successfully!")
-                print(f"  run_env: {blogs_team_payload['run_env']}")
                 response2_text = (response2.text or "").strip()
+                logical_error = False
                 if response2_text:
                     print(f"Blogs Team endpoint response: {response2_text[:500]}")
-                blogs_team_ok = True
+                    try:
+                        parsed = json.loads(response2_text)
+                        if isinstance(parsed, dict):
+                            if parsed.get("error"):
+                                logical_error = True
+                            parsed_status = parsed.get("status")
+                            if parsed_status is not None:
+                                try:
+                                    if int(parsed_status) >= 400:
+                                        logical_error = True
+                                except (TypeError, ValueError):
+                                    pass
+                            if parsed.get("success") is False:
+                                logical_error = True
+                    except json.JSONDecodeError:
+                        lower_body = response2_text.lower()
+                        if "invalid token" in lower_body or "error" in lower_body:
+                            logical_error = True
+
+                if logical_error:
+                    print("✗ Blogs Team endpoint returned an application-level error despite HTTP 200.")
+                    blogs_team_ok = False
+                else:
+                    print("✓ Blogs Team Metrics report sent successfully!")
+                    print(f"  run_env: {blogs_team_payload['run_env']}")
+                    blogs_team_ok = True
             else:
                 print(f"✗ Blogs Team Metrics failed: {response2.text[:500]}")
                 blogs_team_ok = False
