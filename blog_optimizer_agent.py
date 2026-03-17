@@ -646,6 +646,9 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             print(f"Original Endpoint Status: {response1.status_code}")
             if response1.status_code == 200:
                 print("✓ Original endpoint report sent successfully!")
+                response1_text = (response1.text or "").strip()
+                if response1_text:
+                    print(f"Original endpoint response: {response1_text[:500]}")
                 original_ok = True
             else:
                 print(f"✗ Original endpoint failed: {response1.text[:500]}")
@@ -673,6 +676,9 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             if response2.status_code == 200:
                 print("✓ Blogs Team Metrics report sent successfully!")
                 print(f"  run_env: {blogs_team_payload['run_env']}")
+                response2_text = (response2.text or "").strip()
+                if response2_text:
+                    print(f"Blogs Team endpoint response: {response2_text[:500]}")
                 blogs_team_ok = True
             else:
                 print(f"✗ Blogs Team Metrics failed: {response2.text[:500]}")
@@ -1580,14 +1586,15 @@ async def main(args):
             total_optimized += results['optimized']
             total_skipped += results['skipped']
             total_errors += results.get('error', 0)
-            total_timeout += results.get('timeout', 0)
+            total_timeout += results.get('timeout_after_retries', 0)
             total_no_file += results.get('no_file', 0)
             total_empty_response += results.get('empty_response', 0)
             total_limit_reached += results.get('limit_reached', 0)
         
         # Calculate items_succeeded and items_failed
         items_succeeded = total_optimized + total_skipped
-        items_failed = total_errors + total_timeout + total_no_file + total_empty_response + total_limit_reached
+        # Daily-limit skips are intentional and should not be treated as failures.
+        items_failed = total_errors + total_timeout + total_no_file + total_empty_response
         
         metrics['items_succeeded'] = items_succeeded
         metrics['items_failed'] = items_failed
@@ -1624,6 +1631,7 @@ async def main(args):
                 print(f"Empty LLM response: {total_empty_response}")
             if total_limit_reached > 0:
                 print(f"Skipped due to daily limit: {total_limit_reached}")
+                print("Note: daily-limit skips are excluded from items_failed.")
                 
         print(f"\nTotal URLs processed: {total_processed}")
         
