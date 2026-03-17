@@ -615,7 +615,9 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
             "items_discovered": metrics.get('items_discovered', 0),
             "items_failed": metrics.get('items_failed', 0),
             "items_succeeded": metrics.get('items_succeeded', 0),
-            "run_duration_ms": metrics.get('run_duration_ms', 0)
+            "run_duration_ms": metrics.get('run_duration_ms', 0),
+            "token_usage": metrics.get('token_usage', 0),
+            "api_call_count": metrics.get('api_call_count', 0)
         }
         
         has_api_token = bool(API_TOKEN)
@@ -692,6 +694,8 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
         print(f"Succeeded: {metrics.get('items_succeeded', 0)}")
         print(f"Failed: {metrics.get('items_failed', 0)}")
         print(f"Duration: {metrics.get('run_duration_ms', 0)}ms")
+        print(f"Token Usage: {metrics.get('token_usage', 0)}")
+        print(f"API Call Count: {metrics.get('api_call_count', 0)}")
         print("="*60)
         
         configured_results = [r for r in [original_ok, blogs_team_ok] if r is not None]
@@ -1115,7 +1119,7 @@ def extract_blog_urls_from_csv(file_path: str, brand: str = None):
         print(f"CSV error: {e}")
         return []
 
-async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish_date: str):
+async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish_date: str, metrics: dict = None):
     """Optimize a blog post with domain-aware tracking and retry logic."""
     folder_name = md_file_path.parent.name
     
@@ -1254,6 +1258,9 @@ Return the complete optimized blog post starting with "---" and ending with the 
                 await asyncio.sleep(retry_delay * (2 ** (retry_count - 1)))
             
             print(f"  Optimizing with {MODEL_NAME}...")
+            if metrics is not None:
+                metrics['api_call_count'] = metrics.get('api_call_count', 0) + 1
+                print(f"  Metrics: api_call_count={metrics['api_call_count']}")
             
             # Call LLM with timeout
             response = await client.chat.completions.create(
@@ -1279,6 +1286,17 @@ Return the complete optimized blog post starting with "---" and ending with the 
                 max_tokens=4000,
                 timeout=30.0  # 30 second timeout
             )
+
+            usage = getattr(response, "usage", None)
+            if metrics is not None and usage is not None:
+                total_tokens = getattr(usage, "total_tokens", 0) or 0
+                prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+                completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+                metrics['token_usage'] = metrics.get('token_usage', 0) + total_tokens
+                print(
+                    f"  Metrics: token_usage +={total_tokens} "
+                    f"(prompt={prompt_tokens}, completion={completion_tokens}) => {metrics['token_usage']}"
+                )
             
             optimized = response.choices[0].message.content.strip()
             
@@ -1362,7 +1380,9 @@ async def main(args):
         'items_discovered': 0,
         'items_succeeded': 0,
         'items_failed': 0,
-        'status': 'success'
+        'status': 'success',
+        'token_usage': 0,
+        'api_call_count': 0
     }
     
     # Initialize limit settings
@@ -1532,7 +1552,7 @@ async def main(args):
                     continue
                 
                 # Optimize the post
-                success, status = await optimize_post(md_file, url, domain_info, publish_date)
+                success, status = await optimize_post(md_file, url, domain_info, publish_date, metrics)
                 if status == "timeout":
                     status = "timeout_after_retries"  # Rename for clarity
                 domain_results[status] = domain_results.get(status, 0) + 1
