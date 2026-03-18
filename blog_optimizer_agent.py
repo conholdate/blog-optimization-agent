@@ -108,6 +108,133 @@ BRAND_CONFIG = {
     }
 }
 
+
+def get_website_for_brand(brand: str) -> str:
+    """Map brand key to website used by metrics endpoint."""
+    brand_to_website = {
+        "aspose": "aspose.com",
+        "aspose-cloud": "aspose.cloud",
+        "conholdate": "conholdate.com",
+        "conholdate-cloud": "conholdate.cloud",
+        "groupdocs": "groupdocs.com",
+        "groupdocs-cloud": "groupdocs.cloud",
+    }
+    return brand_to_website.get(brand, "unknown")
+
+
+def extract_url_first_segment(url: str) -> str:
+    """Extract first path segment from URL in lowercase."""
+    try:
+        path = ""
+        if "://" in url:
+            right = url.split("://", 1)[1]
+            path = right.split("/", 1)[1] if "/" in right else ""
+        else:
+            path = url.split("/", 1)[1] if "/" in url else ""
+        if not path:
+            return ""
+        return path.split("/", 1)[0].strip().lower()
+    except Exception:
+        return ""
+
+
+def derive_family_name(url: str, website: str) -> str:
+    """
+    Derive family-level product name from URL and website.
+    Examples:
+      aspose.cloud + /words/... -> Aspose.Words
+      conholdate.com + /total/... -> Conholdate.Total
+      groupdocs.com + /viewer/... -> GroupDocs.Viewer
+    """
+    first_segment = extract_url_first_segment(url)
+    website_l = (website or "").lower()
+
+    default_family = "Unknown"
+    company_prefix = "Unknown"
+    if "aspose" in website_l:
+        company_prefix = "Aspose"
+        default_family = "Aspose"
+    elif "conholdate" in website_l:
+        company_prefix = "Conholdate"
+        default_family = "Conholdate"
+    elif "groupdocs" in website_l:
+        company_prefix = "GroupDocs"
+        default_family = "GroupDocs"
+
+    if not first_segment:
+        return default_family
+
+    family_maps = {
+        "aspose": {
+            "cad": "CAD",
+            "pdf": "PDF",
+            "words": "Words",
+            "cells": "Cells",
+            "slides": "Slides",
+            "email": "Email",
+            "note": "Note",
+            "diagram": "Diagram",
+            "html": "HTML",
+            "image": "Imaging",
+            "barcode": "Barcode",
+            "ocr": "OCR",
+            "psd": "PSD",
+            "tasks": "Tasks",
+            "three": "3D",
+            "gis": "GIS",
+            "omr": "OMR",
+            "page": "Page",
+            "pub": "PUB",
+            "svg": "SVG",
+            "tex": "TeX",
+            "visio": "Diagram",
+            "web": "HTML",
+            "finance": "Finance",
+        },
+        "conholdate": {
+            "total": "Total",
+        },
+        "groupdocs": {
+            "comparison": "Comparison",
+            "merger": "Merger",
+            "annotation": "Annotation",
+            "conversion": "Conversion",
+            "signature": "Signature",
+            "viewer": "Viewer",
+            "parser": "Parser",
+            "assembly": "Assembly",
+            "editor": "Editor",
+            "metadata": "Metadata",
+        },
+    }
+
+    if "aspose" in website_l:
+        suffix = family_maps["aspose"].get(first_segment, first_segment.title())
+        return f"{company_prefix}.{suffix}"
+    if "conholdate" in website_l:
+        suffix = family_maps["conholdate"].get(first_segment, first_segment.title())
+        return f"{company_prefix}.{suffix}"
+    if "groupdocs" in website_l:
+        suffix = family_maps["groupdocs"].get(first_segment, first_segment.title())
+        return f"{company_prefix}.{suffix}"
+    return default_family
+
+
+def ensure_family_metrics_bucket(metrics: dict, family_name: str) -> dict:
+    """Get or initialize per-family metrics bucket."""
+    if "family_metrics" not in metrics:
+        metrics["family_metrics"] = {}
+    if family_name not in metrics["family_metrics"]:
+        metrics["family_metrics"][family_name] = {
+            "items_discovered": 0,
+            "items_succeeded": 0,
+            "items_failed": 0,
+            "token_usage": 0,
+            "api_call_count": 0,
+            "limit_reached": 0,
+        }
+    return metrics["family_metrics"][family_name]
+
 # ----------------------------------------------------
 # 3. Domain Detection & Logging Functions
 # ----------------------------------------------------
@@ -556,7 +683,13 @@ def has_language_code_prefix(url: str):
 # ----------------------------------------------------
 # 4. API Reporting Functions
 # ----------------------------------------------------
-def send_api_report(status: str, metrics: dict, website: str = "conholdate.com", env: str = "PROD"):
+def send_api_report(
+    status: str,
+    metrics: dict,
+    website: str = "conholdate.com",
+    env: str = "PROD",
+    product_override: str = None
+):
     """
     Send job completion report to API endpoints.
     
@@ -588,12 +721,13 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
         # Format timestamp in ISO format with GMT+5 timezone
         timestamp = current_time.isoformat(timespec='milliseconds')
         
-        # Determine product based on website
-        product = "Conholdate"
-        if website == "aspose.com":
-            product = "Aspose"
-        elif website == "groupdocs.com":
-            product = "GroupDocs"
+        # Determine product based on website (or explicit family override).
+        product = product_override or "Conholdate"
+        if not product_override:
+            if website == "aspose.com":
+                product = "Aspose"
+            elif website == "groupdocs.com":
+                product = "GroupDocs"
         
         # Generate random 5-digit number and create run_id
         random_suffix = random.randint(10000, 99999)  # Generates a random 5-digit number
@@ -765,6 +899,52 @@ def send_api_report(status: str, metrics: dict, website: str = "conholdate.com",
     except Exception as e:
         print(f"Error sending API reports: {type(e).__name__}: {e}")
         return False
+
+
+def send_api_reports_by_family(status: str, metrics: dict, website: str, env: str = "PROD") -> bool:
+    """
+    Send one metrics payload per family for family-level reporting.
+    Falls back to single payload when no family buckets are available.
+    """
+    family_metrics = metrics.get("family_metrics") or {}
+    if not family_metrics:
+        return send_api_report(status, metrics, website, env)
+
+    print("\n" + "="*60)
+    print("SENDING FAMILY-LEVEL API REPORTS")
+    print("="*60)
+
+    all_ok = True
+    for family_name in sorted(family_metrics.keys()):
+        fam = family_metrics[family_name]
+        family_payload_metrics = {
+            "items_discovered": fam.get("items_discovered", 0),
+            "items_succeeded": fam.get("items_succeeded", 0),
+            "items_failed": fam.get("items_failed", 0),
+            "run_duration_ms": metrics.get("run_duration_ms", 0),
+            "token_usage": fam.get("token_usage", 0),
+            "api_call_count": fam.get("api_call_count", 0),
+            "status": status,
+        }
+        print(
+            f"\nFamily: {family_name} | "
+            f"discovered={family_payload_metrics['items_discovered']}, "
+            f"succeeded={family_payload_metrics['items_succeeded']}, "
+            f"failed={family_payload_metrics['items_failed']}, "
+            f"token_usage={family_payload_metrics['token_usage']}, "
+            f"api_call_count={family_payload_metrics['api_call_count']}"
+        )
+        ok = send_api_report(
+            status,
+            family_payload_metrics,
+            website,
+            env,
+            product_override=family_name
+        )
+        all_ok = all_ok and bool(ok)
+
+    print(f"\nFamily-level metrics reporting result: success={all_ok}")
+    return all_ok
 
 # ----------------------------------------------------
 # 5. Cleanup Functions
@@ -1317,6 +1497,11 @@ Return the complete optimized blog post starting with "---" and ending with the 
             if metrics is not None:
                 metrics['api_call_count'] = metrics.get('api_call_count', 0) + 1
                 print(f"  Metrics: api_call_count={metrics['api_call_count']}")
+                family_name = metrics.get('_active_family_name')
+                if family_name and "family_metrics" in metrics and family_name in metrics["family_metrics"]:
+                    metrics["family_metrics"][family_name]['api_call_count'] = (
+                        metrics["family_metrics"][family_name].get('api_call_count', 0) + 1
+                    )
             
             # Call LLM with timeout
             response = await client.chat.completions.create(
@@ -1353,6 +1538,11 @@ Return the complete optimized blog post starting with "---" and ending with the 
                     f"  Metrics: token_usage +={total_tokens} "
                     f"(prompt={prompt_tokens}, completion={completion_tokens}) => {metrics['token_usage']}"
                 )
+                family_name = metrics.get('_active_family_name')
+                if family_name and "family_metrics" in metrics and family_name in metrics["family_metrics"]:
+                    metrics["family_metrics"][family_name]['token_usage'] = (
+                        metrics["family_metrics"][family_name].get('token_usage', 0) + total_tokens
+                    )
             
             optimized = response.choices[0].message.content.strip()
             
@@ -1438,7 +1628,8 @@ async def main(args):
         'items_failed': 0,
         'status': 'success',
         'token_usage': 0,
-        'api_call_count': 0
+        'api_call_count': 0,
+        'family_metrics': {}
     }
     
     # Initialize limit settings
@@ -1492,6 +1683,13 @@ async def main(args):
         
         # Store items_discovered
         metrics['items_discovered'] = len(blog_urls)
+        website_for_run = get_website_for_brand(args.brand)
+
+        # Build per-family discovered counts.
+        for url in blog_urls:
+            family_name = derive_family_name(url, website_for_run)
+            family_bucket = ensure_family_metrics_bucket(metrics, family_name)
+            family_bucket['items_discovered'] += 1
         
         # Organize URLs by domain
         urls_by_domain = {}
@@ -1574,11 +1772,18 @@ async def main(args):
                     remaining = len(data['urls']) - i + 1
                     domain_results['limit_reached'] += remaining
                     print(f"  ⚠️  Daily limit reached for {domain_key}. Skipping remaining {remaining} URLs.")
+                    remaining_urls = data['urls'][i-1:]
+                    for rem_url in remaining_urls:
+                        rem_family = derive_family_name(rem_url, website_for_run)
+                        rem_bucket = ensure_family_metrics_bucket(metrics, rem_family)
+                        rem_bucket['limit_reached'] += 1
                     break
                 
                 # Check if we're approaching the limit (only check for real optimization candidates)
                 # We'll update this after actual optimizations
                 print(f"\n[{i}/{len(data['urls'])}] Processing URL: {url}")
+                family_name = derive_family_name(url, website_for_run)
+                family_bucket = ensure_family_metrics_bucket(metrics, family_name)
                 
                 # Find the matching blog post file with brand-aware search
                 md_file, publish_date = find_blog_post_by_url(args.sourcepath, url, domain_info, brand_config)
@@ -1586,6 +1791,7 @@ async def main(args):
                 if not md_file:
                     print(f"  No matching blog post found for URL")
                     domain_results['no_file'] += 1
+                    family_bucket['items_failed'] += 1
                     continue
                 
                 # Extract slug from URL
@@ -1597,6 +1803,7 @@ async def main(args):
                 if not can_optimize:
                     print(f"  Skipping: {reason}")
                     domain_results['skipped'] += 1
+                    family_bucket['items_succeeded'] += 1
                     continue
                 
                 # At this point, we have a candidate for optimization
@@ -1608,11 +1815,18 @@ async def main(args):
                     continue
                 
                 # Optimize the post
+                metrics['_active_family_name'] = family_name
                 success, status = await optimize_post(md_file, url, domain_info, publish_date, metrics)
+                metrics.pop('_active_family_name', None)
                 if status == "timeout":
                     status = "timeout_after_retries"  # Rename for clarity
                 domain_results[status] = domain_results.get(status, 0) + 1
                 total_processed += 1
+
+                if status in ("optimized", "skipped"):
+                    family_bucket['items_succeeded'] += 1
+                elif status in ("error", "timeout_after_retries", "no_file", "empty_response"):
+                    family_bucket['items_failed'] += 1
                 
                 # Update today's count after successful optimization
                 if success and status == "optimized":
@@ -1697,6 +1911,7 @@ async def main(args):
         end_time = time.time()
         run_duration_ms = int((end_time - start_time) * 1000)
         metrics['run_duration_ms'] = run_duration_ms
+        metrics.pop('_active_family_name', None)
 
     return metrics
 
@@ -1721,24 +1936,15 @@ if __name__ == "__main__":
     
     print(f"Main returned metrics: {json.dumps(metrics, default=str)}")
 
-    # Send API report after main completes
+    # Send API report(s) after main completes
     if metrics:
         print("\n" + "="*60)
         print("SENDING API REPORT")
         print("="*60)
-        
-        # Determine website based on brand
-        brand_to_website = {
-            "aspose": "aspose.com",
-            "aspose-cloud": "aspose.cloud",
-            "conholdate": "conholdate.com",
-            "conholdate-cloud": "conholdate.cloud",
-            "groupdocs": "groupdocs.com",
-            "groupdocs-cloud": "groupdocs.cloud",
-        }
-        website = brand_to_website.get(args.brand, "unknown")
-        
-        # Default env to PROD
-        send_api_report(metrics['status'], metrics, website, "PROD")
+
+        website = get_website_for_brand(args.brand)
+
+        # Default env to PROD. Send per-family payloads in the same run.
+        send_api_reports_by_family(metrics['status'], metrics, website, "PROD")
     else:
         print("Skipping API report because main() returned no metrics object.")
