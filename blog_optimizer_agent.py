@@ -1650,7 +1650,7 @@ async def main(args):
             blog_urls = filtered_urls
             print(f"Filtered to {len(blog_urls)} URLs matching brand domains")
         
-        # Store items_discovered
+        # Temporary discovered count; final discovered is recalculated from terminal outcomes.
         metrics['items_discovered'] = len(blog_urls)
         website_for_run = get_website_for_brand(args.brand)
         
@@ -1753,8 +1753,6 @@ async def main(args):
                 if not family_name:
                     print(f"  Warning: Product family not found in categories for {md_file}; skipping family metrics for this URL.")
                 family_bucket = ensure_family_metrics_bucket(metrics, family_name) if family_name else None
-                if family_bucket is not None:
-                    family_bucket['items_discovered'] += 1
                 
                 # Extract slug from URL
                 slug = extract_slug_from_url(url)
@@ -1766,6 +1764,7 @@ async def main(args):
                     print(f"  Skipping: {reason}")
                     domain_results['skipped'] += 1
                     if family_bucket is not None:
+                        family_bucket['items_discovered'] += 1
                         family_bucket['items_succeeded'] += 1
                     continue
                 
@@ -1789,9 +1788,15 @@ async def main(args):
 
                 if status in ("optimized", "skipped"):
                     if family_bucket is not None:
+                        family_bucket['items_discovered'] += 1
                         family_bucket['items_succeeded'] += 1
                 elif status in ("error", "timeout_after_retries", "no_file", "empty_response"):
                     if family_bucket is not None:
+                        family_bucket['items_discovered'] += 1
+                        family_bucket['items_failed'] += 1
+                else:
+                    if family_bucket is not None:
+                        family_bucket['items_discovered'] += 1
                         family_bucket['items_failed'] += 1
                 
                 # Update today's count after successful optimization
@@ -1828,6 +1833,8 @@ async def main(args):
         
         metrics['items_succeeded'] = items_succeeded
         metrics['items_failed'] = items_failed
+        # Redefined discovered: only URLs with terminal outcomes (succeeded or failed).
+        metrics['items_discovered'] = items_succeeded + items_failed
         
         # Overall Results
         print("\n" + "="*60)
