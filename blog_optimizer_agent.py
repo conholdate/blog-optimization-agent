@@ -1892,7 +1892,7 @@ if __name__ == "__main__":
     parser.add_argument("--brand", 
                    choices=['aspose', 'aspose-cloud', 'conholdate', 'conholdate-cloud', 'groupdocs', 'groupdocs-cloud'], 
                    help="Brand to process")
-    parser.add_argument("--limit", type=int, default=1,
+    parser.add_argument("--limit", type=int, default=3,
                        help="Daily limit per domain (default: 1, use 0 for no limit)")
     
     args = parser.parse_args()
