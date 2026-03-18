@@ -867,8 +867,24 @@ def send_api_reports_by_family(status: str, metrics: dict, website: str, env: st
     print("SENDING FAMILY-LEVEL API REPORTS")
     print("="*60)
 
+    # Only report families where actual LLM/API activity happened.
+    # This prevents flooding metrics endpoints with zero-activity families when
+    # daily limit is low and most URLs are skipped or never reached.
+    active_families = []
+    for family_name, fam in family_metrics.items():
+        if (fam.get("api_call_count", 0) > 0) or (fam.get("token_usage", 0) > 0):
+            active_families.append(family_name)
+
+    if not active_families:
+        print("No active family metrics found (no LLM/API activity by family).")
+        return True
+
+    skipped_inactive = len(family_metrics) - len(active_families)
+    if skipped_inactive > 0:
+        print(f"Skipping {skipped_inactive} inactive families with zero API usage.")
+
     all_ok = True
-    for family_name in sorted(family_metrics.keys()):
+    for family_name in sorted(active_families):
         fam = family_metrics[family_name]
         family_payload_metrics = {
             "items_discovered": fam.get("items_discovered", 0),
