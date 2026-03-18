@@ -138,86 +138,39 @@ def extract_url_first_segment(url: str) -> str:
         return ""
 
 
-def derive_family_name(url: str, website: str) -> str:
+def derive_family_name_from_md(md_file_path: Path) -> str:
     """
-    Derive family-level product name from URL and website.
-    Examples:
-      aspose.cloud + /words/... -> Aspose.Words
-      conholdate.com + /total/... -> Conholdate.Total
-      groupdocs.com + /viewer/... -> GroupDocs.Viewer
+    Derive product family from markdown front matter categories.
+    Expected category examples:
+      "Aspose.PDF Product Family"
+      "Conholdate.Total Product Family"
     """
-    first_segment = extract_url_first_segment(url)
-    website_l = (website or "").lower()
+    try:
+        with open(md_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
 
-    default_family = "Unknown"
-    company_prefix = "Unknown"
-    if "aspose" in website_l:
-        company_prefix = "Aspose"
-        default_family = "Aspose"
-    elif "conholdate" in website_l:
-        company_prefix = "Conholdate"
-        default_family = "Conholdate"
-    elif "groupdocs" in website_l:
-        company_prefix = "GroupDocs"
-        default_family = "GroupDocs"
+        match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+        if not match:
+            return None
 
-    if not first_segment:
-        return default_family
+        metadata = yaml.safe_load(match.group(1)) or {}
+        categories = metadata.get("categories", [])
+        if isinstance(categories, str):
+            categories = [categories]
+        if not isinstance(categories, list):
+            return None
 
-    family_maps = {
-        "aspose": {
-            "cad": "CAD",
-            "pdf": "PDF",
-            "words": "Words",
-            "cells": "Cells",
-            "slides": "Slides",
-            "email": "Email",
-            "note": "Note",
-            "diagram": "Diagram",
-            "html": "HTML",
-            "image": "Imaging",
-            "barcode": "Barcode",
-            "ocr": "OCR",
-            "psd": "PSD",
-            "tasks": "Tasks",
-            "three": "3D",
-            "gis": "GIS",
-            "omr": "OMR",
-            "page": "Page",
-            "pub": "PUB",
-            "svg": "SVG",
-            "tex": "TeX",
-            "visio": "Diagram",
-            "web": "HTML",
-            "finance": "Finance",
-        },
-        "conholdate": {
-            "total": "Total",
-        },
-        "groupdocs": {
-            "comparison": "Comparison",
-            "merger": "Merger",
-            "annotation": "Annotation",
-            "conversion": "Conversion",
-            "signature": "Signature",
-            "viewer": "Viewer",
-            "parser": "Parser",
-            "assembly": "Assembly",
-            "editor": "Editor",
-            "metadata": "Metadata",
-        },
-    }
-
-    if "aspose" in website_l:
-        suffix = family_maps["aspose"].get(first_segment, first_segment.title())
-        return f"{company_prefix}.{suffix}"
-    if "conholdate" in website_l:
-        suffix = family_maps["conholdate"].get(first_segment, first_segment.title())
-        return f"{company_prefix}.{suffix}"
-    if "groupdocs" in website_l:
-        suffix = family_maps["groupdocs"].get(first_segment, first_segment.title())
-        return f"{company_prefix}.{suffix}"
-    return default_family
+        for cat in categories:
+            if not isinstance(cat, str):
+                continue
+            normalized = " ".join(cat.strip().split())
+            fam_match = re.search(r'([A-Za-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)\s+Product\s+Family$', normalized, re.IGNORECASE)
+            if fam_match:
+                return fam_match.group(1)
+        return None
+    except Exception as e:
+        print(f"Warning: Unable to derive family from {md_file_path}: {e}")
+        return None
 
 
 def ensure_family_metrics_bucket(metrics: dict, family_name: str) -> dict:
@@ -687,7 +640,7 @@ def send_api_report(
     status: str,
     metrics: dict,
     website: str = "conholdate.com",
-    env: str = "PROD",
+    env: str = "DEV",
     product_override: str = None
 ):
     """
@@ -697,7 +650,7 @@ def send_api_report(
         status: "success" or "fail"
         metrics: Dictionary containing metrics
         website: The company website (default: "conholdate.com")
-        env: Environment - "PROD" or "DEV" (default: "PROD")
+        env: Environment - "PROD" or "DEV" (default: "DEV")
     """
     try:
         print("\n" + "="*60)
@@ -818,7 +771,7 @@ def send_api_report(
         
         # Prepare payload for Blogs Team Metrics (add run_env field)
         blogs_team_payload = common_payload.copy()
-        blogs_team_payload["run_env"] = env  # Will be "PROD" by default
+        blogs_team_payload["run_env"] = env  # Currently "DEV" during testing
         
         # Send to Blogs Team Metrics endpoint (if configured)
         if has_blogs_team_token:
@@ -901,7 +854,7 @@ def send_api_report(
         return False
 
 
-def send_api_reports_by_family(status: str, metrics: dict, website: str, env: str = "PROD") -> bool:
+def send_api_reports_by_family(status: str, metrics: dict, website: str, env: str = "DEV") -> bool:
     """
     Send one metrics payload per family for family-level reporting.
     Falls back to single payload when no family buckets are available.
@@ -1684,12 +1637,6 @@ async def main(args):
         # Store items_discovered
         metrics['items_discovered'] = len(blog_urls)
         website_for_run = get_website_for_brand(args.brand)
-
-        # Build per-family discovered counts.
-        for url in blog_urls:
-            family_name = derive_family_name(url, website_for_run)
-            family_bucket = ensure_family_metrics_bucket(metrics, family_name)
-            family_bucket['items_discovered'] += 1
         
         # Organize URLs by domain
         urls_by_domain = {}
@@ -1772,18 +1719,11 @@ async def main(args):
                     remaining = len(data['urls']) - i + 1
                     domain_results['limit_reached'] += remaining
                     print(f"  ⚠️  Daily limit reached for {domain_key}. Skipping remaining {remaining} URLs.")
-                    remaining_urls = data['urls'][i-1:]
-                    for rem_url in remaining_urls:
-                        rem_family = derive_family_name(rem_url, website_for_run)
-                        rem_bucket = ensure_family_metrics_bucket(metrics, rem_family)
-                        rem_bucket['limit_reached'] += 1
                     break
                 
                 # Check if we're approaching the limit (only check for real optimization candidates)
                 # We'll update this after actual optimizations
                 print(f"\n[{i}/{len(data['urls'])}] Processing URL: {url}")
-                family_name = derive_family_name(url, website_for_run)
-                family_bucket = ensure_family_metrics_bucket(metrics, family_name)
                 
                 # Find the matching blog post file with brand-aware search
                 md_file, publish_date = find_blog_post_by_url(args.sourcepath, url, domain_info, brand_config)
@@ -1791,8 +1731,14 @@ async def main(args):
                 if not md_file:
                     print(f"  No matching blog post found for URL")
                     domain_results['no_file'] += 1
-                    family_bucket['items_failed'] += 1
                     continue
+
+                family_name = derive_family_name_from_md(md_file)
+                if not family_name:
+                    print(f"  Warning: Product family not found in categories for {md_file}; skipping family metrics for this URL.")
+                family_bucket = ensure_family_metrics_bucket(metrics, family_name) if family_name else None
+                if family_bucket is not None:
+                    family_bucket['items_discovered'] += 1
                 
                 # Extract slug from URL
                 slug = extract_slug_from_url(url)
@@ -1803,7 +1749,8 @@ async def main(args):
                 if not can_optimize:
                     print(f"  Skipping: {reason}")
                     domain_results['skipped'] += 1
-                    family_bucket['items_succeeded'] += 1
+                    if family_bucket is not None:
+                        family_bucket['items_succeeded'] += 1
                     continue
                 
                 # At this point, we have a candidate for optimization
@@ -1815,7 +1762,8 @@ async def main(args):
                     continue
                 
                 # Optimize the post
-                metrics['_active_family_name'] = family_name
+                if family_name:
+                    metrics['_active_family_name'] = family_name
                 success, status = await optimize_post(md_file, url, domain_info, publish_date, metrics)
                 metrics.pop('_active_family_name', None)
                 if status == "timeout":
@@ -1824,9 +1772,11 @@ async def main(args):
                 total_processed += 1
 
                 if status in ("optimized", "skipped"):
-                    family_bucket['items_succeeded'] += 1
+                    if family_bucket is not None:
+                        family_bucket['items_succeeded'] += 1
                 elif status in ("error", "timeout_after_retries", "no_file", "empty_response"):
-                    family_bucket['items_failed'] += 1
+                    if family_bucket is not None:
+                        family_bucket['items_failed'] += 1
                 
                 # Update today's count after successful optimization
                 if success and status == "optimized":
@@ -1944,7 +1894,7 @@ if __name__ == "__main__":
 
         website = get_website_for_brand(args.brand)
 
-        # Default env to PROD. Send per-family payloads in the same run.
-        send_api_reports_by_family(metrics['status'], metrics, website, "PROD")
+        # Default env to DEV during testing. Send per-family payloads in the same run.
+        send_api_reports_by_family(metrics['status'], metrics, website, "DEV")
     else:
         print("Skipping API report because main() returned no metrics object.")
