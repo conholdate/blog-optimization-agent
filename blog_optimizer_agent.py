@@ -173,12 +173,84 @@ def derive_family_name_from_md(md_file_path: Path) -> str:
         return None
 
 
-def ensure_family_metrics_bucket(metrics: dict, family_name: str) -> dict:
-    """Get or initialize per-family metrics bucket."""
+PLATFORM_OPTIONS = [".NET", "Java", "Python", "Node.js", "C++", "PHP", "Android", "Go", "Ruby", "ALL"]
+_platform_detection_cache = {}
+
+
+async def identify_platform_with_llm(md_file_path: Path) -> str:
+    """
+    Identify platform from markdown content using LLM (translator-style logic).
+    Returns one platform token; normalizes "ALL" to "MULTI" to avoid sending ALL in payloads.
+    """
+    cache_key = str(md_file_path)
+    if cache_key in _platform_detection_cache:
+        return _platform_detection_cache[cache_key]
+
+    try:
+        with open(md_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        print(f"Warning: Unable to read file for platform detection {md_file_path}: {e}")
+        return "UNKNOWN"
+
+    # Limit content sent for classification to control cost/latency.
+    snippet = content[:12000]
+    platforms_list = ", ".join(PLATFORM_OPTIONS)
+    prompt = f"""Analyze the following blog post content (markdown) and identify the primary platform.
+
+Available platforms: {platforms_list}
+
+Rules:
+- If content clearly matches ONE platform, return that ONE platform exactly.
+- If content matches multiple platforms, return "ALL".
+- If no platform is identifiable, return "ALL".
+- Return only the platform token, nothing else.
+
+Blog content:
+{snippet}
+"""
+
+    try:
+        response = await client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert classifier for programming platforms in technical blog content."
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1,
+            max_tokens=20,
+            timeout=20.0,
+        )
+        raw_value = (response.choices[0].message.content or "").strip()
+        normalized = raw_value
+        if normalized not in PLATFORM_OPTIONS:
+            normalized = "ALL"
+        if normalized == "ALL":
+            normalized = "MULTI"
+
+        _platform_detection_cache[cache_key] = normalized
+        return normalized
+    except Exception as e:
+        print(f"Warning: Platform identification failed for {md_file_path}: {e}")
+        return "UNKNOWN"
+
+
+def get_family_platform_key(family_name: str, platform_name: str) -> str:
+    return f"{family_name}||{platform_name}"
+
+
+def ensure_family_metrics_bucket(metrics: dict, family_name: str, platform_name: str) -> tuple[str, dict]:
+    """Get or initialize per-family-per-platform metrics bucket."""
     if "family_metrics" not in metrics:
         metrics["family_metrics"] = {}
-    if family_name not in metrics["family_metrics"]:
-        metrics["family_metrics"][family_name] = {
+    key = get_family_platform_key(family_name, platform_name)
+    if key not in metrics["family_metrics"]:
+        metrics["family_metrics"][key] = {
+            "product": family_name,
+            "platform": platform_name,
             "items_discovered": 0,
             "items_succeeded": 0,
             "items_failed": 0,
@@ -186,7 +258,7 @@ def ensure_family_metrics_bucket(metrics: dict, family_name: str) -> dict:
             "api_call_count": 0,
             "limit_reached": 0,
         }
-    return metrics["family_metrics"][family_name]
+    return key, metrics["family_metrics"][key]
 
 # ----------------------------------------------------
 # 3. Domain Detection & Logging Functions
@@ -641,7 +713,8 @@ def send_api_report(
     metrics: dict,
     website: str = "conholdate.com",
     env: str = "DEV",
-    product_override: str = None
+    product_override: str = None,
+    platform_override: str = None
 ):
     """
     Send job completion report to API endpoints.
@@ -695,7 +768,7 @@ def send_api_report(
             "run_id": run_id,
             "status": status,
             "product": product,
-            "platform": "ALL",
+            "platform": platform_override or "UNKNOWN",
             "website": website,
             "website_section": "Blog",
             "item_name": "Blog Posts",
@@ -830,6 +903,7 @@ def send_api_report(
         print(f"Timestamp (GMT+5): {timestamp}")
         print(f"Product: {product}")
         print(f"Website: {website}")
+        print(f"Platform: {common_payload.get('platform')}")
         print(f"Status: {status}")
         print(f"Environment: {env}")
         print(f"Run ID: {run_id}")
@@ -870,22 +944,24 @@ def send_api_reports_by_family(status: str, metrics: dict, website: str, env: st
     # Only report families where actual LLM/API activity happened.
     # This prevents flooding metrics endpoints with zero-activity families when
     # daily limit is low and most URLs are skipped or never reached.
-    active_families = []
-    for family_name, fam in family_metrics.items():
+    active_metric_keys = []
+    for metric_key, fam in family_metrics.items():
         if (fam.get("api_call_count", 0) > 0) or (fam.get("token_usage", 0) > 0):
-            active_families.append(family_name)
+            active_metric_keys.append(metric_key)
 
-    if not active_families:
+    if not active_metric_keys:
         print("No active family metrics found (no LLM/API activity by family).")
         return True
 
-    skipped_inactive = len(family_metrics) - len(active_families)
+    skipped_inactive = len(family_metrics) - len(active_metric_keys)
     if skipped_inactive > 0:
-        print(f"Skipping {skipped_inactive} inactive families with zero API usage.")
+        print(f"Skipping {skipped_inactive} inactive family-platform metrics with zero API usage.")
 
     all_ok = True
-    for family_name in sorted(active_families):
-        fam = family_metrics[family_name]
+    for metric_key in sorted(active_metric_keys):
+        fam = family_metrics[metric_key]
+        family_name = fam.get("product", "Unknown")
+        platform_name = fam.get("platform", "UNKNOWN")
         family_payload_metrics = {
             "items_discovered": fam.get("items_discovered", 0),
             "items_succeeded": fam.get("items_succeeded", 0),
@@ -896,7 +972,7 @@ def send_api_reports_by_family(status: str, metrics: dict, website: str, env: st
             "status": status,
         }
         print(
-            f"\nFamily: {family_name} | "
+            f"\nFamily: {family_name} | Platform: {platform_name} | "
             f"discovered={family_payload_metrics['items_discovered']}, "
             f"succeeded={family_payload_metrics['items_succeeded']}, "
             f"failed={family_payload_metrics['items_failed']}, "
@@ -908,7 +984,8 @@ def send_api_reports_by_family(status: str, metrics: dict, website: str, env: st
             family_payload_metrics,
             website,
             env,
-            product_override=family_name
+            product_override=family_name,
+            platform_override=platform_name
         )
         all_ok = all_ok and bool(ok)
 
@@ -1466,10 +1543,10 @@ Return the complete optimized blog post starting with "---" and ending with the 
             if metrics is not None:
                 metrics['api_call_count'] = metrics.get('api_call_count', 0) + 1
                 print(f"  Metrics: api_call_count={metrics['api_call_count']}")
-                family_name = metrics.get('_active_family_name')
-                if family_name and "family_metrics" in metrics and family_name in metrics["family_metrics"]:
-                    metrics["family_metrics"][family_name]['api_call_count'] = (
-                        metrics["family_metrics"][family_name].get('api_call_count', 0) + 1
+                active_metric_key = metrics.get('_active_metric_key')
+                if active_metric_key and "family_metrics" in metrics and active_metric_key in metrics["family_metrics"]:
+                    metrics["family_metrics"][active_metric_key]['api_call_count'] = (
+                        metrics["family_metrics"][active_metric_key].get('api_call_count', 0) + 1
                     )
             
             # Call LLM with timeout
@@ -1507,10 +1584,10 @@ Return the complete optimized blog post starting with "---" and ending with the 
                     f"  Metrics: token_usage +={total_tokens} "
                     f"(prompt={prompt_tokens}, completion={completion_tokens}) => {metrics['token_usage']}"
                 )
-                family_name = metrics.get('_active_family_name')
-                if family_name and "family_metrics" in metrics and family_name in metrics["family_metrics"]:
-                    metrics["family_metrics"][family_name]['token_usage'] = (
-                        metrics["family_metrics"][family_name].get('token_usage', 0) + total_tokens
+                active_metric_key = metrics.get('_active_metric_key')
+                if active_metric_key and "family_metrics" in metrics and active_metric_key in metrics["family_metrics"]:
+                    metrics["family_metrics"][active_metric_key]['token_usage'] = (
+                        metrics["family_metrics"][active_metric_key].get('token_usage', 0) + total_tokens
                     )
             
             optimized = response.choices[0].message.content.strip()
@@ -1752,7 +1829,11 @@ async def main(args):
                 family_name = derive_family_name_from_md(md_file)
                 if not family_name:
                     print(f"  Warning: Product family not found in categories for {md_file}; skipping family metrics for this URL.")
-                family_bucket = ensure_family_metrics_bucket(metrics, family_name) if family_name else None
+                platform_name = await identify_platform_with_llm(md_file)
+                metric_key = None
+                family_bucket = None
+                if family_name:
+                    metric_key, family_bucket = ensure_family_metrics_bucket(metrics, family_name, platform_name)
                 
                 # Extract slug from URL
                 slug = extract_slug_from_url(url)
@@ -1777,10 +1858,10 @@ async def main(args):
                     continue
                 
                 # Optimize the post
-                if family_name:
-                    metrics['_active_family_name'] = family_name
+                if metric_key:
+                    metrics['_active_metric_key'] = metric_key
                 success, status = await optimize_post(md_file, url, domain_info, publish_date, metrics)
-                metrics.pop('_active_family_name', None)
+                metrics.pop('_active_metric_key', None)
                 if status == "timeout":
                     status = "timeout_after_retries"  # Rename for clarity
                 domain_results[status] = domain_results.get(status, 0) + 1
@@ -1884,7 +1965,7 @@ async def main(args):
         end_time = time.time()
         run_duration_ms = int((end_time - start_time) * 1000)
         metrics['run_duration_ms'] = run_duration_ms
-        metrics.pop('_active_family_name', None)
+        metrics.pop('_active_metric_key', None)
 
     return metrics
 
