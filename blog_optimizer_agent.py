@@ -173,14 +173,14 @@ def derive_family_name_from_md(md_file_path: Path) -> str:
         return None
 
 
-PLATFORM_OPTIONS = [".NET", "Java", "Python", "Node.js", "C++", "PHP", "Android", "Go", "Ruby", "ALL"]
+PLATFORM_OPTIONS = [".NET", "Java", "Python", "Node.js", "C++", "PHP", "Android", "Go", "Ruby", "All"]
 _platform_detection_cache = {}
 
 
 async def identify_platform_with_llm(md_file_path: Path) -> str:
     """
-    Identify platform from markdown content using LLM (translator-style logic).
-    Returns one platform token; normalizes "ALL" to "MULTI" to avoid sending ALL in payloads.
+    Identify platform from markdown content using LLM
+    Returns one platform token
     """
     cache_key = str(md_file_path)
     if cache_key in _platform_detection_cache:
@@ -202,8 +202,8 @@ Available platforms: {platforms_list}
 
 Rules:
 - If content clearly matches ONE platform, return that ONE platform exactly.
-- If content matches multiple platforms, return "ALL".
-- If no platform is identifiable, return "ALL".
+- If content matches multiple platforms, return "All".
+- If no platform is identifiable, return "All".
 - Return only the platform token, nothing else.
 
 Blog content:
@@ -227,9 +227,7 @@ Blog content:
         raw_value = (response.choices[0].message.content or "").strip()
         normalized = raw_value
         if normalized not in PLATFORM_OPTIONS:
-            normalized = "ALL"
-        if normalized == "ALL":
-            normalized = "MULTI"
+            normalized = "All"
 
         _platform_detection_cache[cache_key] = normalized
         return normalized
