@@ -191,7 +191,7 @@ async def identify_platform_with_llm(md_file_path: Path) -> str:
             content = f.read()
     except Exception as e:
         print(f"Warning: Unable to read file for platform detection {md_file_path}: {e}")
-        return "UNKNOWN"
+        return "All"
 
     # Limit content sent for classification to control cost/latency.
     snippet = content[:12000]
@@ -225,15 +225,37 @@ Blog content:
             timeout=20.0,
         )
         raw_value = (response.choices[0].message.content or "").strip()
-        normalized = raw_value
+        normalized = raw_value.strip().strip('"').strip("'")
+        # Normalize to canonical platform labels.
+        normalized_map = {
+            ".net": ".NET",
+            "dotnet": ".NET",
+            "java": "Java",
+            "python": "Python",
+            "node.js": "Node.js",
+            "nodejs": "Node.js",
+            "c++": "C++",
+            "cpp": "C++",
+            "php": "PHP",
+            "android": "Android",
+            "go": "Go",
+            "ruby": "Ruby",
+            "all": "All",
+            "unknown": "All",
+        }
+        normalized = normalized_map.get(normalized.lower(), normalized)
         if normalized not in PLATFORM_OPTIONS:
+            normalized = "All"
+
+        # Never emit UNKNOWN in metrics payloads; use All for ambiguous/unknown.
+        if normalized == "All":
             normalized = "All"
 
         _platform_detection_cache[cache_key] = normalized
         return normalized
     except Exception as e:
         print(f"Warning: Platform identification failed for {md_file_path}: {e}")
-        return "UNKNOWN"
+        return "All"
 
 
 def get_family_platform_key(family_name: str, platform_name: str) -> str:
@@ -766,7 +788,7 @@ def send_api_report(
             "run_id": run_id,
             "status": status,
             "product": product,
-            "platform": platform_override or "UNKNOWN",
+            "platform": platform_override or "All",
             "website": website,
             "website_section": "Blog",
             "item_name": "Blog Posts",
@@ -959,7 +981,9 @@ def send_api_reports_by_family(status: str, metrics: dict, website: str, env: st
     for metric_key in sorted(active_metric_keys):
         fam = family_metrics[metric_key]
         family_name = fam.get("product", "Unknown")
-        platform_name = fam.get("platform", "UNKNOWN")
+        platform_name = fam.get("platform", "All")
+        if str(platform_name).strip().upper() == "UNKNOWN":
+            platform_name = "All"
         family_payload_metrics = {
             "items_discovered": fam.get("items_discovered", 0),
             "items_succeeded": fam.get("items_succeeded", 0),
