@@ -19,16 +19,22 @@ jobs:
         include:
           - name: blog.aspose.com
             script: GSC-aspose.com.py
+            content_repo: https://github.com/Aspose/aspose-blog
           - name: blog.aspose.cloud
             script: GSC-aspose.cloud.py
+            content_repo: https://github.com/aspose-cloud/aspose-cloud-blog
           - name: blog.conholdate.com
             script: GSC-conholdate.com.py
+            content_repo: https://github.com/conholdate/conholdate-blog
           - name: blog.conholdate.cloud
             script: GSC-conholdate.cloud.py
+            content_repo: https://github.com/conholdate-cloud/blog.conholdate.cloud
           - name: blog.groupdocs.com
             script: GSC-groupdocs.com.py
+            content_repo: https://github.com/groupdocs/groupdocs-blog
           - name: blog.groupdocs.cloud
             script: GSC-groupdocs.cloud.py
+            content_repo: https://github.com/groupdocs-cloud/groupdocs-cloud-blog
 
     steps:
       - name: Checkout repository
@@ -55,7 +61,12 @@ jobs:
             printf '%s' "$GSC_CREDENTIALS_JSON" > credentials.json
           fi
 
+      - name: Clone blog content repository
+        run: git clone --depth 1 "${{ matrix.content_repo }}" blog-content
+
       - name: Run ${{ matrix.name }} export
+        env:
+          BLOG_CONTENT_ROOT: blog-content
         run: python ${{ matrix.script }}
 
       - name: Commit CSV outputs

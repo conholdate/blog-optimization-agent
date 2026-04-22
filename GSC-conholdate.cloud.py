@@ -5,6 +5,11 @@ import requests
 import searchconsole
 import pandas as pd
 from datetime import datetime, timedelta
+from gsc_processing_utils import (
+    has_language_prefix,
+    select_best_days_since_map,
+    url_to_path,
+)
 
 # -----------------------------------------------------------------------------
 # Configuration: override with env vars if needed
@@ -19,6 +24,7 @@ SPREADSHEET_ID = os.getenv(
 )
 CHUNK_SIZE = 3000
 CTR_THRESHOLD = 0.01  # 1%
+CTR_MAX_THRESHOLD = 0.04  # 4%
 
 
 def send_to_google_sheets(rows, is_first_chunk=True):
@@ -109,15 +115,43 @@ def main():
         df["ctr"] = df["clicks"] / df["impressions"].replace(0, 1)
 
     df = df[df["page"].str.contains("blog.conholdate.cloud", na=False)]
+    before_lang_filter = len(df)
+    df = df[~df["page"].apply(has_language_prefix)]
+    lang_filtered = before_lang_filter - len(df)
     original_count = len(df)
-    df = df[df["ctr"] >= CTR_THRESHOLD]
+    df = df[(df["ctr"] >= CTR_THRESHOLD) & (df["ctr"] <= CTR_MAX_THRESHOLD)]
     removed = original_count - len(df)
-    print(f"Keeping {len(df):,} rows with CTR >= {CTR_THRESHOLD:.2%} (filtered out {removed:,})")
+    if "position" not in df.columns:
+        df["position"] = 0.0
+    print(f"Keeping {len(df):,} rows with {CTR_THRESHOLD:.2%} <= CTR <= {CTR_MAX_THRESHOLD:.2%} (filtered out {removed:,})")
+    print(f"Removed {lang_filtered:,} non-English URL rows")
 
     if df.empty:
         print("All rows filtered out; nothing to send")
 
-    df_sorted = df.sort_values(by="ctr", ascending=True)
+    df_sorted = df.copy()
+
+    content_root, days_since_map, parsed_files, matched_count, total_pages, _ = select_best_days_since_map(
+        "blog.conholdate.cloud",
+        df_sorted["page"].tolist(),
+    )
+    if content_root:
+        print(f"Using content root: {content_root}")
+        print(f"Indexed {parsed_files:,} posts with publish dates")
+        print(f"Matched publish dates for {matched_count:,}/{total_pages:,} URLs")
+        if matched_count == 0 and total_pages > 0:
+            print("Warning: 0 URL matches found in content root. Check BLOG_CONTENT_ROOT/domain repo.")
+    else:
+        print("Content root not found. Set BLOG_CONTENT_ROOT to enrich publish age.")
+
+    df_sorted["Days Since Published"] = df_sorted["page"].apply(
+        lambda page: days_since_map.get(url_to_path(str(page)))
+    )
+    df_sorted = df_sorted[
+        ["page", "clicks", "impressions", "ctr", "position", "Days Since Published"]
+    ]
+
+    df_sorted = df_sorted.sort_values(by="Days Since Published", ascending=False, na_position="last")
 
     # 6) Prepare rows
     all_rows = [
@@ -126,6 +160,17 @@ def main():
             "clicks": float(row["clicks"]),
             "impressions": float(row["impressions"]),
             "ctr": float(row["ctr"]),
+            "position": float(row["position"]),
+            "days_since_published": (
+                int(row["Days Since Published"])
+                if pd.notna(row["Days Since Published"])
+                else None
+            ),
+            "Days Since Published": (
+                int(row["Days Since Published"])
+                if pd.notna(row["Days Since Published"])
+                else None
+            ),
         }
         for _, row in df_sorted.iterrows()
     ]

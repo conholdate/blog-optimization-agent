@@ -3,6 +3,11 @@ Blog Optimizer Agent & GSC Utilities
 
 This repo centers on an async **Blog Optimizer** that cleans and governs re-optimization of blog posts across Aspose, Conholdate, and GroupDocs. It also includes lightweight Google Search Console (GSC) scripts that export domain data to Google Sheets with CSV backups.
 
+| Links to Related Google Sheets                     
+|---------------------------------
+| [To Be Optimized Blog Posts](https://docs.google.com/spreadsheets/d/18sYeMy0pYD7-eJxBO674MCpsQy8ACCGnh9RefqPSW_A/edit?gid=831473760#gid=831473760) |
+| [Blog Optimization Log](https://docs.google.com/spreadsheets/d/1wh7oEXBhEd35PX8L2er6eY-FH2RB_T04N5ftu9WyRp4/edit?gid=0#gid=0) |
+
 Quick Start
 -----------
 1. **Python**: 3.11+ recommended (matches `pyproject.toml`).
@@ -52,14 +57,26 @@ Review `MIN_DAYS_BETWEEN_OPTIMIZATIONS`, `MIN_DAYS_SINCE_PUBLISH`, log paths und
 
 Running the Search Console Scripts
 ----------------------------------
-Each script shares the same flow: authenticate → fetch last 180 days → filter to the specific blog domain → drop rows with CTR < 1% → sort by CTR (ascending) → upload to the shared Apps Script → save CSV backup.
+Each script shares the same flow: authenticate → fetch last 180 days → filter to the specific blog domain → keep only English URLs → keep rows where `1% <= CTR <= 4%` → compute `Days Since Published` from front matter date in matching `index.md` → sort by `Days Since Published` (descending) → upload to Apps Script → save CSV backup.
+The exporters now also:
+- Keep only English URLs (no language prefix like `/zh/`, `/ru/`, `/de/`, etc.).
+- Add `Days Since Published` by reading front matter `date` from matching `index.md` posts in the blog content repo.
+- Include `position` and `days_since_published` (`Days Since Published`) in the upload payload.
 
 Examples:
 ```bash
+export BLOG_CONTENT_ROOT=/absolute/path/to/aspose-blog
 python3 GSC-aspose.com.py
-python3 GSC-conholdate.cloud.py
+
+export BLOG_CONTENT_ROOT=/absolute/path/to/conholdate-blog
+python3 GSC-conholdate.com.py
+
+export BLOG_CONTENT_ROOT=/absolute/path/to/groupdocs-blog
 python3 GSC-groupdocs.com.py
 ```
+
+Note: `BLOG_CONTENT_ROOT` should point to the matching blog repo for the script you run.  
+If it points to a different domain repo, `Days Since Published` may be blank (the scripts now log matched URL counts and warnings).
 
 Configuration Notes
 -------------------
@@ -69,8 +86,9 @@ Configuration Notes
   - `CONHOLDATE_CLOUD_WEB_APP_URL`, `CONHOLDATE_CLOUD_SPREADSHEET_ID`
   - `GROUPDOCS_WEB_APP_URL`, `GROUPDOCS_SPREADSHEET_ID`
   - `GROUPDOCS_CLOUD_WEB_APP_URL`, `GROUPDOCS_CLOUD_SPREADSHEET_ID`
-- **CTR threshold**: `CTR_THRESHOLD = 0.01` (1%). Adjust in the scripts if needed.
+- **CTR range filter**: `CTR_THRESHOLD = 0.01` and `CTR_MAX_THRESHOLD = 0.04` (`1% <= CTR <= 4%`).
 - **Chunk size**: uploads in chunks of 3000 rows to avoid timeouts (`CHUNK_SIZE`).
+- **Apps Script reference**: a canonical deployment script is included at `google-apps-script-webapp.js`.
 
 Outputs
 -------
