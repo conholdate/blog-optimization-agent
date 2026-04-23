@@ -16,7 +16,7 @@ from gsc_processing_utils import (
 # -----------------------------------------------------------------------------
 WEB_APP_URL = os.getenv(
     "ASPOSE_CLOUD_WEB_APP_URL",
-    "https://script.google.com/macros/s/AKfycbwcSCl0W0E0SAgz24i-zK20VC50f2akH4tIc2-_yY6nIRyzRH9E23zhHIRB7B-WJ-VDIg/exec",
+    "https://script.google.com/macros/s/AKfycbwXtCUcSz9gesrcUmlHuZSDJqt4Lqo_xH0eySIJ3qLm66a-9z4956BHfQXJRmlyp-_zGw/exec",
 )
 SPREADSHEET_ID = os.getenv(
     "ASPOSE_CLOUD_SPREADSHEET_ID",

@@ -26,31 +26,37 @@ jobs:
             repo: Aspose/aspose-blog
             path: aspose-blog
             default_branch: master
+            csv_file: csv/aspose.csv
           - name: blog.aspose.cloud
             script: GSC-aspose.cloud.py
             repo: aspose-cloud/aspose-cloud-blog
             path: aspose-cloud-blog
             default_branch: master
+            csv_file: csv/aspose-cloud.csv
           - name: blog.conholdate.com
             script: GSC-conholdate.com.py
             repo: conholdate/conholdate-blog
             path: conholdate-blog
             default_branch: main
+            csv_file: csv/conholdate.csv
           - name: blog.conholdate.cloud
             script: GSC-conholdate.cloud.py
             repo: conholdate-cloud/blog.conholdate.cloud
             path: blog.conholdate.cloud
             default_branch: main
+            csv_file: csv/conholdate-cloud.csv
           - name: blog.groupdocs.com
             script: GSC-groupdocs.com.py
             repo: groupdocs/groupdocs-blog
             path: groupdocs-blog
             default_branch: master
+            csv_file: csv/groupdocs.csv
           - name: blog.groupdocs.cloud
             script: GSC-groupdocs.cloud.py
             repo: groupdocs-cloud/groupdocs-cloud-blog
             path: groupdocs-cloud-blog
             default_branch: master
+            csv_file: csv/groupdocs-cloud.csv
 
     steps:
       # Checkout THIS repo (where workflow exists)
@@ -92,6 +98,29 @@ jobs:
         env:
           BLOG_CONTENT_ROOT: ${{ github.workspace }}/${{ matrix.path }}
         run: python ${{ matrix.script }}
+
+      - name: Verify Days Since Published in CSV
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          p = Path("${{ matrix.csv_file }}")
+          if not p.exists():
+              raise SystemExit(f"CSV not found: {p}")
+          with p.open() as f:
+              reader = csv.DictReader(f)
+              rows = list(reader)
+          key = "Days Since Published"
+          non_blank = sum(
+              1 for r in rows
+              if str(r.get(key, "")).strip() not in ("", "None", "nan")
+          )
+          print(f"CSV: {p}")
+          print(f"Rows: {len(rows)}")
+          print(f"Non-blank '{key}': {non_blank}")
+          if rows:
+              print("Sample days:", [rows[i].get(key, "") for i in range(min(5, len(rows)))])
+          PY
 
       - name: Commit CSV outputs
         run: |
