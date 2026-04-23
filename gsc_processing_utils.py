@@ -10,7 +10,7 @@ import yaml
 
 # Common non-English prefixes used across blog URLs.
 LANGUAGE_PREFIXES = {
-    "ar", "ara", "cs", "da", "de", "el", "es", "fa", "fi", "fr", "he", "hi",
+    "ar", "ara", "cs", "tag" ,"da", "de", "el", "es", "fa", "fi", "fr", "he", "hi",
     "hu", "id", "it", "ja", "ko", "nl", "no", "pl", "pt", "pt-br", "ro", "ru",
     "sv", "th", "tr", "uk", "ukr", "vi", "zh", "zh-cn", "zh-hans", "zh-hant",
     "zh-tw",
