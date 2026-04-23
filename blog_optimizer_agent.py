@@ -581,12 +581,17 @@ def send_to_google_sheet(domain_info: dict, slug: str, url: str, last_optimized:
     """
     try:
         GOOGLE_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbwDr1dcuFlm2IYiW9Zpemu9Fb8HchVDD2Lh6KkmGLmMsvMmtyT8d0GrWhD1YgwdMvxULw/exec"
+
+        # Keep CSV/domain logs date-only for optimization rules, but send
+        # timestamp to the Google Sheet payload for Last Optimized column.
+        gmt5 = timezone(timedelta(hours=5))
+        payload_last_optimized = datetime.now(gmt5).isoformat(timespec='milliseconds')
         
         payload = {
             "slug": slug,
             "url": url,
             "domain": domain_info['full_domain'],
-            "last_optimized": last_optimized
+            "last_optimized": payload_last_optimized
         }
         
         response = requests.post(
