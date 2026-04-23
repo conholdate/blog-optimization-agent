@@ -25,6 +25,8 @@ def url_to_path(url: str) -> str:
     path = parsed.path or ""
     if not path:
         return ""
+    if not path.startswith("/"):
+        path = "/" + path
     if len(path) > 1:
         path = path.rstrip("/")
     return path

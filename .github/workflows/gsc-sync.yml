@@ -24,21 +24,33 @@ jobs:
           - name: blog.aspose.com
             script: GSC-aspose.com.py
             repo: Aspose/aspose-blog
+            path: aspose-blog
+            default_branch: master
           - name: blog.aspose.cloud
             script: GSC-aspose.cloud.py
             repo: aspose-cloud/aspose-cloud-blog
+            path: aspose-cloud-blog
+            default_branch: master
           - name: blog.conholdate.com
             script: GSC-conholdate.com.py
             repo: conholdate/conholdate-blog
+            path: conholdate-blog
+            default_branch: main
           - name: blog.conholdate.cloud
             script: GSC-conholdate.cloud.py
             repo: conholdate-cloud/blog.conholdate.cloud
+            path: blog.conholdate.cloud
+            default_branch: main
           - name: blog.groupdocs.com
             script: GSC-groupdocs.com.py
             repo: groupdocs/groupdocs-blog
+            path: groupdocs-blog
+            default_branch: master
           - name: blog.groupdocs.cloud
             script: GSC-groupdocs.cloud.py
             repo: groupdocs-cloud/groupdocs-cloud-blog
+            path: groupdocs-cloud-blog
+            default_branch: master
 
     steps:
       # Checkout THIS repo (where workflow exists)
@@ -50,8 +62,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ matrix.repo }}
-          token: ${{ secrets.BLOG_REPOS_TOKEN }}
-          path: blog-content
+          ref: ${{ matrix.default_branch }}
+          token: ${{ secrets.BLOG_REPOS_TOKEN || github.token }}
+          path: ${{ matrix.path }}
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -76,7 +90,7 @@ jobs:
 
       - name: Run ${{ matrix.name }} export
         env:
-          BLOG_CONTENT_ROOT: blog-content
+          BLOG_CONTENT_ROOT: ${{ github.workspace }}/${{ matrix.path }}
         run: python ${{ matrix.script }}
 
       - name: Commit CSV outputs
