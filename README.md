@@ -106,6 +106,7 @@ Automation (GitHub Actions)
   - groupdocs → `https://github.com/groupdocs/groupdocs-blog`
   - groupdocs-cloud → `https://github.com/groupdocs-cloud/groupdocs-cloud-blog`
   - Required secrets: `PROFESSIONALIZE_API_KEY_OPTIMIZER` (and optional `PROFESSIONALIZE_BASE_URL` if you need a custom endpoint), `BLOG_OPTIMIZER_API_TOKEN`, `BLOGS_TEAM_TOKEN`.
+  - Before committing optimized Markdown back to a blog repo, the workflow detects that repo's configured Hugo version, installs the same version, and runs a test Hugo build. Build failures write CSV diagnostics to `logs/hugo-build/<brand>_hugo_build_errors.csv` and upload that file as a workflow artifact.
 - **GSC Sheets Sync** (`.github/workflows/gsc-sync.yml`): runs on the 1st and 15th of each month at 06:00 UTC and executes all six `GSC-*.py` exporters.
   - Required secret: `GSC_CLIENT_SECRET_JSON` containing the Google OAuth client JSON (as a single-line or multiline secret). Optional `GSC_CREDENTIALS_JSON` lets the workflows reuse a pre-authorized token file to avoid interactive auth.
   - If you need to override the default Apps Script URLs or Sheet IDs, add repo/environment secrets that match the env var names listed above (e.g., `ASPOSE_WEB_APP_URL`, `GROUPDOCS_SPREADSHEET_ID`).
