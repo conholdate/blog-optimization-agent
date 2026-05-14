@@ -1853,15 +1853,6 @@ async def main(args):
                     domain_results['no_file'] += 1
                     continue
 
-                family_name = derive_family_name_from_md(md_file)
-                if not family_name:
-                    print(f"  Warning: Product family not found in categories for {md_file}; skipping family metrics for this URL.")
-                platform_name = await identify_platform_with_llm(md_file)
-                metric_key = None
-                family_bucket = None
-                if family_name:
-                    metric_key, family_bucket = ensure_family_metrics_bucket(metrics, family_name, platform_name)
-                
                 # Extract slug from URL
                 slug = extract_slug_from_url(url)
                 
@@ -1871,9 +1862,6 @@ async def main(args):
                 if not can_optimize:
                     print(f"  Skipping: {reason}")
                     domain_results['skipped'] += 1
-                    if family_bucket is not None:
-                        family_bucket['items_discovered'] += 1
-                        family_bucket['items_succeeded'] += 1
                     continue
                 
                 # At this point, we have a candidate for optimization
@@ -1883,6 +1871,15 @@ async def main(args):
                     limit_reached = True
                     # Remaining URLs will be counted and skipped at loop start
                     continue
+
+                family_name = derive_family_name_from_md(md_file)
+                if not family_name:
+                    print(f"  Warning: Product family not found in categories for {md_file}; skipping family metrics for this URL.")
+                platform_name = await identify_platform_with_llm(md_file)
+                metric_key = None
+                family_bucket = None
+                if family_name:
+                    metric_key, family_bucket = ensure_family_metrics_bucket(metrics, family_name, platform_name)
                 
                 # Optimize the post
                 if metric_key:
@@ -1943,6 +1940,9 @@ async def main(args):
         metrics['items_failed'] = items_failed
         # Redefined discovered: only URLs with terminal outcomes (succeeded or failed).
         metrics['items_discovered'] = items_succeeded + items_failed
+
+        if total_errors > 0 or total_timeout > 0 or total_empty_response > 0:
+            metrics['status'] = 'fail'
         
         # Overall Results
         print("\n" + "="*60)
@@ -2029,3 +2029,7 @@ if __name__ == "__main__":
         send_api_reports_by_family(metrics['status'], metrics, website, "DEV")
     else:
         print("Skipping API report because main() returned no metrics object.")
+
+    if metrics and metrics.get('status') == 'fail':
+        print("Exiting with failure because one or more optimization attempts failed.")
+        sys.exit(1)

@@ -164,6 +164,15 @@ jobs:
             exit 1
           fi
 
+      - name: "Preflight: verify LLM connection"
+        if: ${{ steps.select.outputs.run_this == 'true' }}
+        env:
+          PROFESSIONALIZE_API_KEY_OPTIMIZER: ${{ secrets.PROFESSIONALIZE_API_KEY_OPTIMIZER }}
+          PROFESSIONALIZE_BASE_URL: ${{ secrets.PROFESSIONALIZE_BASE_URL }}
+          PROFESSIONALIZE_LLM_MODEL: ${{ secrets.PROFESSIONALIZE_LLM_MODEL }}
+        run: |
+          python test_llm_connection.py
+
       - name: Fetch blog content
         if: ${{ steps.select.outputs.run_this == 'true' }}
         env:
