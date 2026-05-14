@@ -57,6 +57,7 @@ print(f"Using model: {MODEL_NAME}")
 # Configuration
 MIN_DAYS_BETWEEN_OPTIMIZATIONS = 90  # 3 months
 MIN_DAYS_SINCE_PUBLISH = 180  # 6 months (approximately 180 days)
+USE_LASTMOD_SKIP_GUARD = os.getenv("BLOG_OPTIMIZER_USE_LASTMOD_GUARD", "false").strip().lower() in {"1", "true", "yes"}
 LOG_DIR = "logs"
 LOG_FILE_COMBINED = "all_domains_log.csv"
 
@@ -544,7 +545,7 @@ def can_optimize_slug(domain_info: dict, slug: str, publish_date = None, md_file
             # If date format is invalid, continue with other checks
             print(f"Warning: Error processing publish date {publish_date}: {e}")
 
-    if md_file_path:
+    if USE_LASTMOD_SKIP_GUARD and md_file_path:
         original_lastmod = get_front_matter_lastmod(md_file_path)
         lastmod_date = parse_front_matter_date(original_lastmod)
 
@@ -1500,8 +1501,10 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
     current_date = metadata.get('date', '')
     original_lastmod = metadata.get('lastmod', '')
 
-    # Extra guard: if lastmod was updated recently, skip even if logs are stale/missing.
-    if original_lastmod:
+    # Optional fallback guard for repos that intentionally use front matter
+    # lastmod as the optimization cadence source. Disabled by default because
+    # the optimizer's CSV logs are the primary source of re-optimization state.
+    if USE_LASTMOD_SKIP_GUARD and original_lastmod:
         lastmod_date = None
         try:
             if isinstance(original_lastmod, datetime):
