@@ -463,63 +463,75 @@ def update_optimization_log(domain_info: dict, slug: str, url: str):
     
     print(f"Updated log for '{slug}' from {domain_info['full_domain']}: {today_str}")
 
-def can_optimize_slug(domain_info: dict, slug: str, publish_date = None):
+def parse_front_matter_date(value):
+    """Parse a YAML front matter date-like value into a date."""
+    if not value:
+        return None
+
+    try:
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            normalized_value = value.strip()
+            date_formats = (
+                '%Y-%m-%d',
+                '%Y-%m-%dT%H:%M:%S%z',
+                '%Y-%m-%dT%H:%M:%S',
+                '%a, %d %b %Y %H:%M:%S %z',
+                '%a, %d %b %Y %H:%M:%S GMT',
+                '%a, %d %b %Y %H:%M:%S %Z',
+                '%d %b %Y',
+                '%b %d, %Y',
+                '%m/%d/%Y',
+                '%Y/%m/%d',
+            )
+            for date_format in date_formats:
+                try:
+                    parsed = datetime.strptime(normalized_value, date_format)
+                    return parsed.date()
+                except ValueError:
+                    continue
+
+            if normalized_value.endswith(" GMT"):
+                try:
+                    normalized_gmt = normalized_value[:-4] + " +0000"
+                    return datetime.strptime(normalized_gmt, '%a, %d %b %Y %H:%M:%S %z').date()
+                except ValueError:
+                    pass
+    except Exception:
+        return None
+
+    return None
+
+
+def get_front_matter_lastmod(md_file_path: Path):
+    """Read lastmod from markdown front matter, if present."""
+    try:
+        with open(md_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+        if not match:
+            return None
+
+        metadata = yaml.safe_load(match.group(1)) or {}
+        return metadata.get('lastmod')
+    except Exception as e:
+        print(f"Warning: Unable to read lastmod from {md_file_path}: {e}")
+        return None
+
+
+def can_optimize_slug(domain_info: dict, slug: str, publish_date = None, md_file_path: Path = None):
     """Check if a slug can be optimized based on last optimization date and publish date."""
     
     # Rule 1: Check if post is at least MIN_DAYS_SINCE_PUBLISH days old
     if publish_date:
         try:
-            # Handle both string and datetime.date objects
-            if isinstance(publish_date, str):
-                # Try multiple date formats
-                post_date = None
-                date_formats = [
-                    '%Y-%m-%d',                    # 2025-10-02
-                    '%a, %d %b %Y %H:%M:%S %z',   # Thu, 02 Oct 2025 00:11:25 +0000
-                    '%a, %d %b %Y %H:%M:%S GMT',  # Thu, 31 Oct 2024 00:16:02 GMT
-                    '%a, %d %b %Y %H:%M:%S %Z',   # Thu, 31 Oct 2024 00:16:02 UTC/GMT
-                    '%d %b %Y',                    # 02 Oct 2025
-                    '%b %d, %Y',                   # Oct 02, 2025
-                    '%m/%d/%Y',                    # 10/02/2025
-                    '%Y/%m/%d',                    # 2025/10/02
-                ]
-                
-                for date_format in date_formats:
-                    try:
-                        # For formats with timezone, parse as datetime first
-                        if '%z' in date_format or '%H' in date_format:
-                            dt = datetime.strptime(publish_date, date_format)
-                            post_date = dt.date()
-                        else:
-                            post_date = datetime.strptime(publish_date, date_format).date()
-                        break  # Successfully parsed
-                    except ValueError:
-                        continue
-
-                # Extra fallback: handle "GMT" by converting to +0000
-                if not post_date and publish_date.endswith(" GMT"):
-                    try:
-                        normalized = publish_date[:-4] + " +0000"
-                        dt = datetime.strptime(normalized, '%a, %d %b %Y %H:%M:%S %z')
-                        post_date = dt.date()
-                    except ValueError:
-                        pass
-                
-                if not post_date:
-                    print(f"Warning: Could not parse publish date: {publish_date}")
-                    # Skip this check if we can't parse the date
-                    post_date = None
-                    
-            elif isinstance(publish_date, datetime):
-                # Convert datetime to date (datetime is also a date subclass, so check first)
-                post_date = publish_date.date()
-            elif isinstance(publish_date, date):
-                # Already a date object
-                post_date = publish_date
-            else:
-                # Unknown format, skip this check
-                print(f"Warning: Unknown publish date format: {type(publish_date)}")
-                post_date = None
+            post_date = parse_front_matter_date(publish_date)
+            if not post_date:
+                print(f"Warning: Could not parse publish date: {publish_date}")
             
             if post_date:
                 today = date.today()
@@ -531,6 +543,22 @@ def can_optimize_slug(domain_info: dict, slug: str, publish_date = None):
         except (ValueError, AttributeError) as e:
             # If date format is invalid, continue with other checks
             print(f"Warning: Error processing publish date {publish_date}: {e}")
+
+    if md_file_path:
+        original_lastmod = get_front_matter_lastmod(md_file_path)
+        lastmod_date = parse_front_matter_date(original_lastmod)
+
+        if lastmod_date:
+            today = date.today()
+            days_since_lastmod = (today - lastmod_date).days
+            if days_since_lastmod < 0:
+                return False, f"lastmod is in the future ({original_lastmod})."
+            if days_since_lastmod < MIN_DAYS_BETWEEN_OPTIMIZATIONS:
+                remaining_days = MIN_DAYS_BETWEEN_OPTIMIZATIONS - days_since_lastmod
+                return False, (
+                    f"lastmod is {original_lastmod} ({days_since_lastmod} days ago). "
+                    f"Can optimize again in {remaining_days} days. (front matter)"
+                )
     
     # Rule 2: First check domain-specific log
     domain_log_data = load_optimization_log_for_domain(domain_info)
@@ -1442,7 +1470,7 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
         print(f"  Publish date: {publish_date}")
     
     # Check if we can optimize this slug
-    can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date)
+    can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date, md_file_path)
     
     if not can_optimize:
         print(f"  Skipping: {reason}")
@@ -1857,7 +1885,7 @@ async def main(args):
                 slug = extract_slug_from_url(url)
                 
                 # Check if we can optimize this slug
-                can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date)
+                can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date, md_file)
                 
                 if not can_optimize:
                     print(f"  Skipping: {reason}")
