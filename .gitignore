@@ -6,7 +6,6 @@ __pycache__/
 .env*
 client_secret.json
 credentials.json
-logs/
 optimized-posts/
 *.egg-info
 build/
