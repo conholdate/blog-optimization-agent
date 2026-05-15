@@ -209,6 +209,8 @@ jobs:
       - name: Detect Hugo version
         id: hugo_version
         if: ${{ steps.select.outputs.run_this == 'true' && steps.blog_changes.outputs.has_markdown_changes == 'true' }}
+        env:
+          HUGO_VERSION: ${{ vars.HUGO_VERSION }}
         run: |
           version=$(python hugo_build_validator.py --sourcepath "${{ github.workspace }}/${{ matrix.path }}" --detect-version)
           echo "version=${version}" >> "$GITHUB_OUTPUT"
