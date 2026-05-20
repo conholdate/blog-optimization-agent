@@ -374,7 +374,7 @@ def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
             "hugo",
             "--gc",
             "--minify",
-            "--quiet",
+            "--verbose",
             "--disableKinds=RSS,sitemap,taxonomy,term",
             "--destination",
             destination,
@@ -457,7 +457,7 @@ def main() -> int:
         print(detected_version.version)
 
         print(
-            f"Detected Hugo {detected_version.version} from {detected_version.source}.",
+            f"Detected Hugo {detected_version.version}",
             file=sys.stderr,
         )
 
