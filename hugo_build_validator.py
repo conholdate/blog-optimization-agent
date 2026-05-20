@@ -375,7 +375,6 @@ def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
             "--gc",
             "--minify",
             "--quiet",
-            "--panicOnWarning",
             "--disableKinds=RSS,sitemap,taxonomy,term",
             "--destination",
             destination,
