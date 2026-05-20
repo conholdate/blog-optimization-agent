@@ -41,6 +41,8 @@ jobs:
   optimize:
     name: ${{ matrix.brand }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     strategy:
       fail-fast: false
       matrix:
@@ -50,16 +52,18 @@ jobs:
             path: conholdate-blog
             default_branch: main
             input_name: run_conholdate
+
           - brand: conholdate-cloud
             repo: conholdate-cloud/blog.conholdate.cloud
             path: blog.conholdate.cloud
             default_branch: main
             input_name: run_conholdate_cloud
+
           - brand: aspose
             repo: Aspose/aspose-blog
             path: aspose-blog
             default_branch: master
-            input_name: run_aspose
+            input_name: run_aspose          
           # - brand: aspose-cloud
           #   repo: aspose-cloud/aspose-cloud-blog
           #   path: aspose-cloud-blog
@@ -160,7 +164,7 @@ jobs:
           fi
 
           if [ "$missing" -ne 0 ]; then
-            echo "One or more required secrets are missing. Set them in repo Settings -> Secrets and variables -> Actions."
+            echo "One or more required secrets are missing."
             exit 1
           fi
 
@@ -179,10 +183,21 @@ jobs:
           BLOG_REPOS_TOKEN: ${{ secrets.BLOG_REPOS_TOKEN }}
         run: |
           if [ -n "$BLOG_REPOS_TOKEN" ]; then
-            git clone --depth=1 --branch "${{ matrix.default_branch }}" https://x-access-token:${BLOG_REPOS_TOKEN}@github.com/${{ matrix.repo }} "${{ matrix.path }}"
+            git clone --depth=1 --branch "${{ matrix.default_branch }}" \
+              https://x-access-token:${BLOG_REPOS_TOKEN}@github.com/${{ matrix.repo }} \
+              "${{ matrix.path }}"
           else
-            git clone --depth=1 --branch "${{ matrix.default_branch }}" https://github.com/${{ matrix.repo }} "${{ matrix.path }}"
+            git clone --depth=1 --branch "${{ matrix.default_branch }}" \
+              https://github.com/${{ matrix.repo }} \
+              "${{ matrix.path }}"
           fi
+
+      - name: Clean Hugo generated files BEFORE optimization
+        if: ${{ steps.select.outputs.run_this == 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/${{ matrix.path }}/resources/_gen"
+          rm -rf "${{ github.workspace }}/${{ matrix.path }}/public"
+          rm -rf "${{ github.workspace }}/${{ matrix.path }}/.hugo_build.lock"
 
       - name: Run optimizer
         if: ${{ steps.select.outputs.run_this == 'true' }}
@@ -194,7 +209,9 @@ jobs:
           BLOG_OPTIMIZER_API_TOKEN: ${{ secrets.BLOG_OPTIMIZER_API_TOKEN }}
           BLOGS_TEAM_TOKEN: ${{ secrets.BLOGS_TEAM_TOKEN }}
         run: |
-          python blog_optimizer_agent.py --brand ${{ matrix.brand }} --sourcepath "${{ github.workspace }}/${{ matrix.path }}"
+          python blog_optimizer_agent.py \
+            --brand ${{ matrix.brand }} \
+            --sourcepath "${{ github.workspace }}/${{ matrix.path }}"
 
       - name: Check for optimized markdown changes
         id: blog_changes
@@ -212,7 +229,10 @@ jobs:
         env:
           HUGO_VERSION: ${{ vars.HUGO_VERSION }}
         run: |
-          version=$(python hugo_build_validator.py --sourcepath "${{ github.workspace }}/${{ matrix.path }}" --detect-version)
+          version=$(python hugo_build_validator.py \
+            --sourcepath "${{ github.workspace }}/${{ matrix.path }}" \
+            --detect-version)
+
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "Detected Hugo version: ${version}"
 
@@ -223,8 +243,19 @@ jobs:
           hugo-version: ${{ steps.hugo_version.outputs.version }}
           extended: true
 
+      - name: Clean Hugo generated files BEFORE validation
+        if: ${{ steps.select.outputs.run_this == 'true' && steps.blog_changes.outputs.has_markdown_changes == 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/${{ matrix.path }}/resources/_gen"
+          rm -rf "${{ github.workspace }}/${{ matrix.path }}/public"
+          rm -rf "${{ github.workspace }}/${{ matrix.path }}/.hugo_build.lock"
+
       - name: Validate Hugo build
         if: ${{ steps.select.outputs.run_this == 'true' && steps.blog_changes.outputs.has_markdown_changes == 'true' }}
+        timeout-minutes: 20
+        env:
+          HUGO_ENV: production
+          HUGO_ENABLEGITINFO: false
         run: |
           python hugo_build_validator.py \
             --brand "${{ matrix.brand }}" \
@@ -247,13 +278,19 @@ jobs:
           BLOG_REPOS_TOKEN: ${{ secrets.BLOG_REPOS_TOKEN }}
         run: |
           if [ -z "$BLOG_REPOS_TOKEN" ]; then
-            echo "BLOG_REPOS_TOKEN not set; skipping push back to ${GITHUB_REPOSITORY}."
+            echo "BLOG_REPOS_TOKEN not set; skipping push."
             echo "push_ok=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          # Ignore Hugo generated files
+          echo "resources/_gen/" >> "${{ matrix.path }}/.git/info/exclude"
+          echo "public/" >> "${{ matrix.path }}/.git/info/exclude"
+          echo ".hugo_build.lock" >> "${{ matrix.path }}/.git/info/exclude"
+
           git -C "${{ matrix.path }}" config user.name "optimizer-agent"
           git -C "${{ matrix.path }}" config user.email "optimizer-agent@users.noreply.github.com"
+
           git -C "${{ matrix.path }}" add -A
 
           if git -C "${{ matrix.path }}" diff --cached --quiet; then
@@ -277,6 +314,7 @@ jobs:
           if git status --porcelain logs | grep -q .; then
             git config user.name "Blog Optimizer Agent"
             git config user.email "optimizer-agent@users.noreply.github.com"
+
             git add logs
 
             if git diff --cached --quiet; then
@@ -288,11 +326,14 @@ jobs:
 
             for i in 1 2 3; do
               git pull --rebase origin "${GITHUB_REF_NAME}" || true
+
               if git push origin "HEAD:${GITHUB_REF_NAME}"; then
                 exit 0
               fi
+
               sleep 3
             done
+
             echo "Failed to push log updates after retries."
             exit 1
           else
