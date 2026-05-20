@@ -228,7 +228,9 @@ jobs:
         run: |
           echo "Scanning modified markdown files for Hugo-breaking syntax..."
 
-          files=$(git -C "${{ matrix.path }}" diff --name-only | grep -E '\.(md|markdown)$' || true)
+          cd "${{ matrix.path }}"
+
+          files=$(git diff --name-only | grep -E '\.(md|markdown)$' || true)
 
           if [ -z "$files" ]; then
             echo "No markdown files changed."
@@ -241,15 +243,16 @@ jobs:
           for file in $files; do
             echo "Checking $file"
 
-            # 🚨 Catch your exact failure: '<' inside Hugo expressions
+            # 🚨 CRITICAL: detect raw '<' inside Hugo expressions or shortcode blocks
             if grep -n "{{.*<.*}}" "$file"; then
-              echo "❌ Invalid Hugo expression with '<' found in $file"
+              echo "❌ Broken Hugo template expression found in $file"
               exit 1
             fi
 
-            # Optional: catch raw HTML injection inside markdown
-            if grep -n "<[^>]*>" "$file" | head -5; then
-              echo "⚠ HTML detected in $file (may break Hugo templates)"
+            # 🚨 NEW: detect ANY suspicious raw '<' that often breaks Hugo
+            if grep -n "{{" "$file" | grep "<" | head -1; then
+              echo "❌ Potential unsafe '<' inside Hugo expression in $file"
+              exit 1
             fi
 
           done
