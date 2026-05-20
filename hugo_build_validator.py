@@ -18,16 +18,18 @@ from typing import Iterable
 
 try:
     import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.11+ in this repo.
+except ModuleNotFoundError:
     tomllib = None
 
 
 VERSION_PATTERN = re.compile(r"\b(?:v)?(\d+\.\d+(?:\.\d+)?(?:[-+][A-Za-z0-9.-]+)?)\b")
+
 MARKDOWN_PATH_PATTERN = re.compile(
     r"(?P<path>(?:[A-Za-z]:)?[^'\"\s:]*?(?:content/)?[^'\"\s:]*?\.(?:md|markdown))"
     r"(?::(?P<line>\d+))?(?::(?P<column>\d+))?",
     re.IGNORECASE,
 )
+
 LINE_PATTERN = re.compile(r"\bline\s+(?P<line>\d+)\b", re.IGNORECASE)
 
 
@@ -46,7 +48,6 @@ class HugoBuildIssue:
 
 
 def normalize_version(value: str) -> str | None:
-    """Return a Hugo version string accepted by setup actions, if present."""
     if not value:
         return None
 
@@ -84,6 +85,7 @@ def _version_from_toml_file(path: Path, source_label: str) -> HugoVersion | None
 
     if isinstance(data, dict):
         collect_environment(data.get("build"))
+
         context = data.get("context")
         if isinstance(context, dict):
             for context_data in context.values():
@@ -91,7 +93,11 @@ def _version_from_toml_file(path: Path, source_label: str) -> HugoVersion | None
 
         tools = data.get("tools")
         if isinstance(tools, dict):
-            candidates.extend(tools.get(key) for key in ("hugo", "hugo-extended") if tools.get(key))
+            candidates.extend(
+                tools.get(key)
+                for key in ("hugo", "hugo-extended")
+                if tools.get(key)
+            )
 
     for candidate in candidates:
         version = normalize_version(str(candidate))
@@ -104,6 +110,7 @@ def _version_from_toml_file(path: Path, source_label: str) -> HugoVersion | None
 def _version_from_text_file(path: Path, pattern: re.Pattern[str], source_label: str) -> HugoVersion | None:
     if not path.exists():
         return None
+
     try:
         text = path.read_text(encoding="utf-8")
     except Exception:
@@ -120,6 +127,7 @@ def _version_from_text_file(path: Path, pattern: re.Pattern[str], source_label: 
 def _version_from_package_json(path: Path) -> HugoVersion | None:
     if not path.exists():
         return None
+
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
@@ -127,32 +135,46 @@ def _version_from_package_json(path: Path) -> HugoVersion | None:
 
     for section in ("devDependencies", "dependencies"):
         dependencies = data.get(section)
+
         if not isinstance(dependencies, dict):
             continue
+
         for package_name in ("hugo-bin", "hugo-extended", "hugo"):
             version = normalize_version(str(dependencies.get(package_name, "")))
+
             if version:
-                return HugoVersion(version, f"{path.name}:{section}.{package_name}")
+                return HugoVersion(
+                    version,
+                    f"{path.name}:{section}.{package_name}"
+                )
 
     return None
 
 
 def detect_hugo_version(repo_path: Path) -> HugoVersion | None:
-    """Detect the Hugo version configured by a blog repository."""
     repo_path = repo_path.resolve()
 
     env_version = normalize_version(os.getenv("HUGO_VERSION", ""))
+
     if env_version:
-        return HugoVersion(env_version, "HUGO_VERSION environment variable")
+        return HugoVersion(
+            env_version,
+            "HUGO_VERSION environment variable"
+        )
 
     checks: Iterable[HugoVersion | None] = (
         _version_from_toml_file(repo_path / "netlify.toml", "netlify.toml"),
         _version_from_toml_file(repo_path / ".mise.toml", ".mise.toml"),
+
         _version_from_text_file(
             repo_path / ".tool-versions",
-            re.compile(r"^\s*hugo(?:-extended)?\s+(?P<version>\S+)", re.MULTILINE),
+            re.compile(
+                r"^\s*hugo(?:-extended)?\s+(?P<version>\S+)",
+                re.MULTILINE,
+            ),
             ".tool-versions",
         ),
+
         _version_from_package_json(repo_path / "package.json"),
     )
 
@@ -161,15 +183,23 @@ def detect_hugo_version(repo_path: Path) -> HugoVersion | None:
             return result
 
     workflow_dir = repo_path / ".github" / "workflows"
+
     if workflow_dir.exists():
         workflow_pattern = re.compile(
             r"(?:hugo-version|HUGO_VERSION)\s*[:=]\s*['\"]?(?P<version>[^'\"\s]+)",
             re.IGNORECASE,
         )
+
         for workflow_file in sorted(workflow_dir.glob("*")):
             if workflow_file.suffix.lower() not in {".yml", ".yaml"}:
                 continue
-            result = _version_from_text_file(workflow_file, workflow_pattern, str(workflow_file.relative_to(repo_path)))
+
+            result = _version_from_text_file(
+                workflow_file,
+                workflow_pattern,
+                str(workflow_file.relative_to(repo_path)),
+            )
+
             if result:
                 return result
 
@@ -192,35 +222,44 @@ def installed_hugo_version() -> str | None:
 
 
 def version_matches(actual_version: str, expected_version: str) -> bool:
-    """Compare setup version with `hugo version`, allowing extended/build suffixes."""
     if actual_version == expected_version:
         return True
-    return actual_version.startswith(f"{expected_version}+") or actual_version.startswith(f"{expected_version}-")
+
+    return (
+        actual_version.startswith(f"{expected_version}+")
+        or actual_version.startswith(f"{expected_version}-")
+    )
 
 
 def parse_hugo_build_issues(output: str, repo_path: Path) -> list[HugoBuildIssue]:
-    """Extract markdown paths and line numbers from Hugo output."""
     issues: list[HugoBuildIssue] = []
     seen: set[tuple[str, str, str, str]] = set()
+
     repo_path = repo_path.resolve()
 
     for raw_line in output.splitlines():
         line = raw_line.strip()
+
         if not line:
             continue
 
         matches = list(MARKDOWN_PATH_PATTERN.finditer(line))
+
         if not matches:
             continue
 
         fallback_line = ""
+
         line_match = LINE_PATTERN.search(line)
+
         if line_match:
             fallback_line = line_match.group("line")
 
         for match in matches:
             raw_path = match.group("path").strip("()[]{}.,;")
+
             md_path = Path(raw_path)
+
             if md_path.is_absolute():
                 try:
                     display_path = str(md_path.resolve().relative_to(repo_path))
@@ -235,7 +274,14 @@ def parse_hugo_build_issues(output: str, repo_path: Path) -> list[HugoBuildIssue
                 column_number=match.group("column") or "",
                 error_detail=line[:1000],
             )
-            key = (issue.markdown_file, issue.line_number, issue.column_number, issue.error_detail)
+
+            key = (
+                issue.markdown_file,
+                issue.line_number,
+                issue.column_number,
+                issue.error_detail,
+            )
+
             if key not in seen:
                 seen.add(key)
                 issues.append(issue)
@@ -243,7 +289,11 @@ def parse_hugo_build_issues(output: str, repo_path: Path) -> list[HugoBuildIssue
     if issues:
         return issues
 
-    first_error = next((line.strip() for line in output.splitlines() if line.strip()), "Hugo build failed.")
+    first_error = next(
+        (line.strip() for line in output.splitlines() if line.strip()),
+        "Hugo build failed.",
+    )
+
     return [
         HugoBuildIssue(
             markdown_file="",
@@ -261,8 +311,11 @@ def write_hugo_error_log(
     brand: str,
     version: HugoVersion | None,
 ) -> None:
+
     log_file.parent.mkdir(parents=True, exist_ok=True)
+
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
     fieldnames = [
         "timestamp_utc",
         "brand",
@@ -277,7 +330,9 @@ def write_hugo_error_log(
 
     with log_file.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
+
         writer.writeheader()
+
         for issue in issues:
             writer.writerow(
                 {
@@ -296,6 +351,7 @@ def write_hugo_error_log(
 
 def validate_installed_hugo(expected_version: HugoVersion | None) -> tuple[bool, str]:
     actual_version = installed_hugo_version()
+
     if not actual_version:
         return False, "Hugo is not installed or is not available on PATH."
 
@@ -309,68 +365,161 @@ def validate_installed_hugo(expected_version: HugoVersion | None) -> tuple[bool,
 
 
 def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
+    os.environ["HUGO_ENV"] = "production"
+    os.environ["HUGO_ENABLEGITINFO"] = "false"
+    os.environ["HUGO_NUMWORKERMULTIPLIER"] = "1"
+
     with tempfile.TemporaryDirectory(prefix="hugo-build-") as destination:
-        return subprocess.run(
-            ["hugo", "--gc", "--minify", "--destination", destination],
-            cwd=repo_path,
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
+        cmd = [
+            "hugo",
+            "--gc",
+            "--minify",
+            "--quiet",
+            "--panicOnWarning",
+            "--disableKinds=RSS,sitemap,taxonomy,term",
+            "--destination",
+            destination,
+        ]
+
+        print(f"Running command: {' '.join(cmd)}")
+
+        try:
+            return subprocess.run(
+                cmd,
+                cwd=repo_path,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=600,
+            )
+
+        except subprocess.TimeoutExpired:
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=124,
+                stdout="Hugo build timed out after 10 minutes.",
+            )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Detect Hugo version and validate a Hugo build.")
-    parser.add_argument("--sourcepath", required=True, help="Path to the blog repository.")
-    parser.add_argument("--brand", default="", help="Brand name for CSV diagnostics.")
-    parser.add_argument("--log-file", default="", help="CSV file to write when Hugo build fails.")
-    parser.add_argument("--detect-version", action="store_true", help="Print detected Hugo version and exit.")
-    parser.add_argument("--expected-version", default="", help="Expected Hugo version already installed.")
+    parser = argparse.ArgumentParser(
+        description="Detect Hugo version and validate a Hugo build."
+    )
+
+    parser.add_argument(
+        "--sourcepath",
+        required=True,
+        help="Path to the blog repository.",
+    )
+
+    parser.add_argument(
+        "--brand",
+        default="",
+        help="Brand name for CSV diagnostics.",
+    )
+
+    parser.add_argument(
+        "--log-file",
+        default="",
+        help="CSV file to write when Hugo build fails.",
+    )
+
+    parser.add_argument(
+        "--detect-version",
+        action="store_true",
+        help="Print detected Hugo version and exit.",
+    )
+
+    parser.add_argument(
+        "--expected-version",
+        default="",
+        help="Expected Hugo version already installed.",
+    )
+
     args = parser.parse_args()
 
     repo_path = Path(args.sourcepath).resolve()
+
     if not repo_path.exists():
         print(f"Repository path not found: {repo_path}", file=sys.stderr)
         return 2
 
     detected_version = detect_hugo_version(repo_path)
+
     if args.detect_version:
         if not detected_version:
-            print(f"Unable to detect Hugo version for {repo_path}.", file=sys.stderr)
+            print(
+                f"Unable to detect Hugo version for {repo_path}.",
+                file=sys.stderr,
+            )
             return 1
+
         print(detected_version.version)
-        print(f"Detected Hugo {detected_version.version} from {detected_version.source}.", file=sys.stderr)
+
+        print(
+            f"Detected Hugo {detected_version.version} from {detected_version.source}.",
+            file=sys.stderr,
+        )
+
         return 0
 
     expected = detected_version
+
     explicit_expected = normalize_version(args.expected_version)
+
     if explicit_expected:
         if not expected or expected.version != explicit_expected:
-            expected = HugoVersion(explicit_expected, "workflow input")
+            expected = HugoVersion(
+                explicit_expected,
+                "workflow input",
+            )
 
     ok, message = validate_installed_hugo(expected)
+
     print(message)
+
     if not ok:
         issues = [HugoBuildIssue("", "", "", message)]
+
         if args.log_file:
-            write_hugo_error_log(Path(args.log_file), issues, repo_path, args.brand, expected)
+            write_hugo_error_log(
+                Path(args.log_file),
+                issues,
+                repo_path,
+                args.brand,
+                expected,
+            )
+
         return 1
 
     print(f"Running Hugo build in {repo_path}...")
+
     result = run_hugo_build(repo_path)
+
     if result.returncode == 0:
         print("Hugo build succeeded.")
         return 0
 
     output = result.stdout or "Hugo build failed without output."
+
     issues = parse_hugo_build_issues(output, repo_path)
+
     if args.log_file:
         log_file = Path(args.log_file)
-        write_hugo_error_log(log_file, issues, repo_path, args.brand, expected)
+
+        write_hugo_error_log(
+            log_file,
+            issues,
+            repo_path,
+            args.brand,
+            expected,
+        )
+
         print(f"Hugo build failed. Wrote diagnostics to {log_file}.")
 
     print(output)
+
     return result.returncode or 1
 
 
