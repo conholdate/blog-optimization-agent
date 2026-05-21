@@ -32,6 +32,11 @@ MARKDOWN_PATH_PATTERN = re.compile(
 
 LINE_PATTERN = re.compile(r"\bline\s+(?P<line>\d+)\b", re.IGNORECASE)
 
+# Lines that start with these prefixes are Hugo diagnostic noise, not real
+# build errors. They are stripped before error parsing and CSV logging so
+# that INFO / WARN entries never appear as false-positive failures.
+_NOISE_PREFIXES = ("INFO ", "WARN ", "DEBUG ", "TRACE ")
+
 
 @dataclass(frozen=True)
 class HugoVersion:
@@ -46,6 +51,10 @@ class HugoBuildIssue:
     column_number: str
     error_detail: str
 
+
+# ---------------------------------------------------------------------------
+# Version helpers
+# ---------------------------------------------------------------------------
 
 def normalize_version(value: str) -> str | None:
     if not value:
@@ -206,6 +215,10 @@ def detect_hugo_version(repo_path: Path) -> HugoVersion | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Hugo install / version check
+# ---------------------------------------------------------------------------
+
 def installed_hugo_version() -> str | None:
     try:
         result = subprocess.run(
@@ -231,13 +244,60 @@ def version_matches(actual_version: str, expected_version: str) -> bool:
     )
 
 
+# ---------------------------------------------------------------------------
+# Output filtering helpers
+# ---------------------------------------------------------------------------
+
+def _is_noise_line(line: str) -> bool:
+    """Return True for INFO/WARN/DEBUG/TRACE lines that are not real errors."""
+    stripped = line.strip()
+    return any(stripped.startswith(prefix) for prefix in _NOISE_PREFIXES)
+
+
+def _filter_noise(output: str) -> str:
+    """Remove INFO/WARN/DEBUG/TRACE lines from Hugo output."""
+    return "\n".join(
+        line for line in output.splitlines() if not _is_noise_line(line)
+    )
+
+
+def _has_real_errors(output: str) -> bool:
+    """
+    Return True only when the output contains genuine Hugo build errors.
+    Ignores INFO / WARN lines completely.
+    """
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _is_noise_line(line):
+            continue
+        # Hugo always prefixes hard errors with "Error:"
+        if stripped.lower().startswith("error:"):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Issue parsing and logging
+# ---------------------------------------------------------------------------
+
 def parse_hugo_build_issues(output: str, repo_path: Path) -> list[HugoBuildIssue]:
+    """Extract markdown paths and line numbers from Hugo output.
+
+    INFO / WARN lines are ignored so that i18n warnings and alias notices
+    never appear as false-positive failures in the CSV log.
+    """
     issues: list[HugoBuildIssue] = []
     seen: set[tuple[str, str, str, str]] = set()
 
     repo_path = repo_path.resolve()
 
     for raw_line in output.splitlines():
+        # Skip non-error diagnostic noise
+        if _is_noise_line(raw_line):
+            continue
+
         line = raw_line.strip()
 
         if not line:
@@ -289,8 +349,13 @@ def parse_hugo_build_issues(output: str, repo_path: Path) -> list[HugoBuildIssue
     if issues:
         return issues
 
+    # Fallback: return the first non-noise, non-empty line as a generic error.
     first_error = next(
-        (line.strip() for line in output.splitlines() if line.strip()),
+        (
+            line.strip()
+            for line in output.splitlines()
+            if line.strip() and not _is_noise_line(line)
+        ),
         "Hugo build failed.",
     )
 
@@ -349,6 +414,10 @@ def write_hugo_error_log(
             )
 
 
+# ---------------------------------------------------------------------------
+# Hugo install validation
+# ---------------------------------------------------------------------------
+
 def validate_installed_hugo(expected_version: HugoVersion | None) -> tuple[bool, str]:
     actual_version = installed_hugo_version()
 
@@ -364,7 +433,18 @@ def validate_installed_hugo(expected_version: HugoVersion | None) -> tuple[bool,
     return True, f"Installed Hugo version: {actual_version}"
 
 
+# ---------------------------------------------------------------------------
+# Hugo build runner
+# ---------------------------------------------------------------------------
+
 def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
+    """Run Hugo build and return the completed process.
+
+    Uses --quiet instead of --verbose so that INFO / WARN lines from Hugo
+    (e.g. i18n warnings, alias notices) do not pollute the output or get
+    misidentified as errors.  Real errors always appear on stderr/stdout
+    regardless of the verbosity flag.
+    """
     os.environ["HUGO_ENV"] = "production"
     os.environ["HUGO_ENABLEGITINFO"] = "false"
     os.environ["HUGO_NUMWORKERMULTIPLIER"] = "1"
@@ -374,7 +454,7 @@ def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
             "hugo",
             "--gc",
             "--minify",
-            "--verbose",
+            "--quiet",                          # suppress INFO/WARN noise
             "--disableKinds=RSS,sitemap,taxonomy,term",
             "--destination",
             destination,
@@ -400,6 +480,10 @@ def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
                 stdout="Hugo build timed out after 10 minutes.",
             )
 
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -457,7 +541,7 @@ def main() -> int:
         print(detected_version.version)
 
         print(
-            f"Detected Hugo {detected_version.version}",
+            f"Detected Hugo {detected_version.version} from {detected_version.source}.",
             file=sys.stderr,
         )
 
@@ -496,13 +580,24 @@ def main() -> int:
 
     result = run_hugo_build(repo_path)
 
-    if result.returncode == 0:
+    # Strip INFO/WARN noise before any further processing.
+    raw_output = result.stdout or ""
+    filtered_output = _filter_noise(raw_output)
+
+    # Hugo may exit 0 even with warnings; only treat as failure when there
+    # are genuine "Error:" lines in the filtered output.
+    build_failed = result.returncode != 0 or _has_real_errors(raw_output)
+
+    if not build_failed:
         print("Hugo build succeeded.")
+        # Print any remaining filtered output (should be minimal with --quiet)
+        if filtered_output.strip():
+            print(filtered_output)
         return 0
 
-    output = result.stdout or "Hugo build failed without output."
+    output_for_log = filtered_output or "Hugo build failed without output."
 
-    issues = parse_hugo_build_issues(output, repo_path)
+    issues = parse_hugo_build_issues(output_for_log, repo_path)
 
     if args.log_file:
         log_file = Path(args.log_file)
@@ -517,7 +612,7 @@ def main() -> int:
 
         print(f"Hugo build failed. Wrote diagnostics to {log_file}.")
 
-    print(output)
+    print(output_for_log)
 
     return result.returncode or 1
 
