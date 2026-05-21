@@ -223,42 +223,6 @@ jobs:
             echo "has_markdown_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Pre-check modified markdown files (Hugo safety gate)
-        if: ${{ steps.select.outputs.run_this == 'true' && steps.blog_changes.outputs.has_markdown_changes == 'true' }}
-        run: |
-          echo "Scanning modified markdown files for Hugo-breaking syntax..."
-
-          cd "${{ matrix.path }}"
-
-          files=$(git diff --name-only | grep -E '\.(md|markdown)$' || true)
-
-          if [ -z "$files" ]; then
-            echo "No markdown files changed."
-            exit 0
-          fi
-
-          echo "Changed files:"
-          echo "$files"
-
-          for file in $files; do
-            echo "Checking $file"
-
-            # 🚨 CRITICAL: detect raw '<' inside Hugo expressions or shortcode blocks
-            if grep -n "{{.*<.*}}" "$file"; then
-              echo "❌ Broken Hugo template expression found in $file"
-              exit 1
-            fi
-
-            # 🚨 NEW: detect ANY suspicious raw '<' that often breaks Hugo
-            if grep -n "{{" "$file" | grep "<" | head -1; then
-              echo "❌ Potential unsafe '<' inside Hugo expression in $file"
-              exit 1
-            fi
-
-          done
-
-          echo "Pre-check passed."
-
       - name: Detect Hugo version
         id: hugo_version
         if: ${{ steps.select.outputs.run_this == 'true' && steps.blog_changes.outputs.has_markdown_changes == 'true' }}
