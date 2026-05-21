@@ -1112,6 +1112,16 @@ def clean_optimized_content(content: str, original_content: str = "") -> str:
     if content.endswith('```'):
         content = content[:-3].rstrip()
 
+    # 11. Fix HTML tags that leaked into Hugo shortcode/template expressions.
+    # Hugo cannot parse `<tag>` inside `{{ }}` expressions and will throw
+    # "unexpected < in expression". Escape bare < and > inside {{ }} blocks.
+    def _escape_html_in_hugo_expr(m: re.Match) -> str:
+        inner = m.group(1)
+        inner = inner.replace('<', '&lt;').replace('>', '&gt;')
+        return '{{' + inner + '}}'
+
+    content = re.sub(r'\{\{(.*?)\}\}', _escape_html_in_hugo_expr, content, flags=re.DOTALL)
+
     return content.strip()
 
 def validate_yaml_front_matter(content: str) -> bool:
@@ -1150,8 +1160,18 @@ def sanitize_yaml_front_matter(content: str) -> tuple[str, list[str]]:
     """
     Sanitize YAML front matter to fix common issues that break Hugo builds.
     Returns (sanitized_content, list_of_fixes_applied).
+
+    NOTE: Date/time fields (date, lastmod, publishDate, expiryDate) are intentionally
+    skipped — Hugo handles their colons and timezone offsets natively without quoting.
     """
     fixes = []
+
+    # Fields whose values must never be quoted — Hugo parses these as native
+    # date/time types and quoting them can break parsing or change behaviour.
+    DATE_FIELDS = {
+        'date', 'lastmod', 'publishdate', 'expirydate',
+        'publishDate', 'expiryDate',
+    }
 
     # Extract front matter
     yaml_pattern = r'^---\s*\n(.*?)\n---\s*\n(.*)'
@@ -1178,7 +1198,12 @@ def sanitize_yaml_front_matter(content: str) -> tuple[str, list[str]]:
             continue
 
         indent, key, value = kv_match.groups()
-        key = key.strip()
+        key_stripped = key.strip()
+
+        # Never touch date/time fields — colons in their values are valid
+        if key_stripped.lower() in {f.lower() for f in DATE_FIELDS}:
+            sanitized_lines.append(original_line)
+            continue
 
         # Skip lines that are list items or already quoted
         if value.startswith(('-', '[', '"', "'")):
@@ -1191,21 +1216,21 @@ def sanitize_yaml_front_matter(content: str) -> tuple[str, list[str]]:
             escaped = value.replace('"', '\\"')
             value = f'"{escaped}"'
             line = f'{indent}{key}: {value}'
-            fixes.append(f'Quoted value with colon: {key}')
+            fixes.append(f'Quoted value with colon: {key_stripped}')
 
         # Fix: quote values that contain # (YAML treats unquoted # as comment)
         elif '#' in value and not value.startswith(('>', '|')):
             escaped = value.replace('"', '\\"')
             value = f'"{escaped}"'
             line = f'{indent}{key}: {value}'
-            fixes.append(f'Quoted value with hash: {key}')
+            fixes.append(f'Quoted value with hash: {key_stripped}')
 
         # Fix: quote values that start with special YAML characters
         elif value and value[0] in ('*', '&', '!', '`', '@', '{', '}'):
             escaped = value.replace('"', '\\"')
             value = f'"{escaped}"'
             line = f'{indent}{key}: {value}'
-            fixes.append(f'Quoted value with special char: {key}')
+            fixes.append(f'Quoted value with special char: {key_stripped}')
 
         sanitized_lines.append(line)
 
