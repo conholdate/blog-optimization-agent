@@ -41,7 +41,7 @@ jobs:
   optimize:
     name: ${{ matrix.brand }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 150
 
     strategy:
       fail-fast: false
