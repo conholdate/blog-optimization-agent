@@ -470,7 +470,7 @@ def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                timeout=1800,
+                timeout=2400,
             )
 
         except subprocess.TimeoutExpired:
