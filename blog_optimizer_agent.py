@@ -1112,11 +1112,15 @@ def clean_optimized_content(content: str, original_content: str = "") -> str:
     if content.endswith('```'):
         content = content[:-3].rstrip()
 
-    # 11. Fix HTML tags that leaked into Hugo shortcode/template expressions.
-    # Hugo cannot parse `<tag>` inside `{{ }}` expressions and will throw
-    # "unexpected < in expression". Escape bare < and > inside {{ }} blocks.
+    # 11. Fix HTML tags that leaked into Hugo template expressions.
+    # Hugo shortcodes use `{{< ... >}}` / `{{% ... %}}` delimiters and must be
+    # preserved exactly. Only escape bare < and > inside plain `{{ ... }}`
+    # template expressions.
     def _escape_html_in_hugo_expr(m: re.Match) -> str:
         inner = m.group(1)
+        stripped = inner.lstrip()
+        if stripped.startswith(('<', '%')):
+            return m.group(0)
         inner = inner.replace('<', '&lt;').replace('>', '&gt;')
         return '{{' + inner + '}}'
 
