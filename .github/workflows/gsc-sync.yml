@@ -162,3 +162,8 @@ jobs:
           fi
 
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Cleanup OAuth files
+        if: always()
+        run: |
+          rm -f client_secret.json credentials.json
