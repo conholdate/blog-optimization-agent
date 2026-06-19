@@ -146,6 +146,8 @@ jobs:
           PROFESSIONALIZE_BASE_URL: ${{ secrets.PROFESSIONALIZE_BASE_URL }}
           PROFESSIONALIZE_LLM_MODEL: ${{ secrets.PROFESSIONALIZE_LLM_MODEL }}
           PROFESSIONALIZE_EMBEDDING_MODEL: ${{ secrets.PROFESSIONALIZE_EMBEDDING_MODEL }}
+          AGENT_METRICS_API_KEY: ${{ secrets.AGENT_METRICS_API_KEY }}
+          BLOGS_TEAM_TOKEN: ${{ secrets.BLOGS_TEAM_TOKEN }}
         run: |
           missing=0
 
@@ -161,6 +163,16 @@ jobs:
 
           if [ -z "$PROFESSIONALIZE_LLM_MODEL" ]; then
             echo "Missing secret: PROFESSIONALIZE_LLM_MODEL"
+            missing=1
+          fi
+
+          if [ -z "$AGENT_METRICS_API_KEY" ]; then
+            echo "Missing secret: AGENT_METRICS_API_KEY"
+            missing=1
+          fi
+
+          if [ -z "$BLOGS_TEAM_TOKEN" ]; then
+            echo "Missing secret: BLOGS_TEAM_TOKEN"
             missing=1
           fi
 
@@ -207,7 +219,7 @@ jobs:
           PROFESSIONALIZE_BASE_URL: ${{ secrets.PROFESSIONALIZE_BASE_URL }}
           PROFESSIONALIZE_LLM_MODEL: ${{ secrets.PROFESSIONALIZE_LLM_MODEL }}
           PROFESSIONALIZE_EMBEDDING_MODEL: ${{ secrets.PROFESSIONALIZE_EMBEDDING_MODEL }}
-          BLOG_OPTIMIZER_API_TOKEN: ${{ secrets.BLOG_OPTIMIZER_API_TOKEN }}
+          AGENT_METRICS_API_KEY: ${{ secrets.AGENT_METRICS_API_KEY }}
           BLOGS_TEAM_TOKEN: ${{ secrets.BLOGS_TEAM_TOKEN }}
         run: |
           python blog_optimizer_agent.py \
