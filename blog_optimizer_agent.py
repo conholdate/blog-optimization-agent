@@ -63,9 +63,9 @@ MIN_DAYS_SINCE_PUBLISH = 180  # 6 months (approximately 180 days)
 LOG_DIR = "logs"
 LOG_FILE_COMBINED = "all_domains_log.csv"
 
-# API Configuration
-API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyCHwElrM6RcYLi0JNQAkJmzGrBjAhf28mKXVyub_6SdaZ2ITvzCwfM5xCLE7rmuxio/exec"
-API_TOKEN = os.getenv("BLOG_OPTIMIZER_API_TOKEN")
+# Metrics API Configuration
+METRICS_API_ENDPOINT = "https://metrics-api.aspose.app/agents"
+METRICS_API_KEY = os.getenv("AGENT_METRICS_API_KEY")
 
 # Blogs Team Metrics Configuration
 BLOGS_TEAM_ENDPOINT = "https://script.google.com/macros/s/AKfycbwYyPBs3ox6xhYfznVpu4Gh8T4l7cXrAIj1m_y1g-vWn6tyP_LAkv3eo6W2EZYAeHgLag/exec"
@@ -727,28 +727,19 @@ def has_language_code_prefix(url: str):
         return False
 
 # ----------------------------------------------------
-# 4. API Reporting Functions
+# 4. Metrics Reporting Functions
 # ----------------------------------------------------
-def post_json_with_optional_token(
+def post_json_with_query_token(
     endpoint: str,
     payload: dict,
-    token: str | None = None,
+    token: str,
     timeout: int = 10,
 ):
-    """
-    Send a JSON POST request without placing secrets in the URL.
-
-    The token is carried in the JSON body so it can be validated server-side
-    without leaking through logs, proxies, or browser history.
-    """
-    request_payload = dict(payload)
-    if token:
-        request_payload["token"] = token
-
+    """Send a JSON POST request with the token in the query string."""
     return requests.post(
-        endpoint,
+        f"{endpoint}?token={token}",
         headers={"Content-Type": "application/json"},
-        json=request_payload,
+        data=json.dumps(payload),
         timeout=timeout,
     )
 
@@ -762,11 +753,11 @@ def send_api_report(
     platform_override: str = None
 ):
     """
-    Send job completion report to API endpoints.
+    Send job completion report to the metrics API.
     """
     try:
         print("\n" + "="*60)
-        print("METRICS REPORTING TRACE")
+        print("METRICS API REPORTING TRACE")
         print("="*60)
         print(f"Incoming status: {status}")
         print(f"Incoming website: {website}")
@@ -816,75 +807,100 @@ def send_api_report(
             "items_succeeded": metrics.get('items_succeeded', 0),
             "run_duration_ms": metrics.get('run_duration_ms', 0),
             "token_usage": metrics.get('token_usage', 0),
-            "api_call_count": metrics.get('api_call_count', 0),
-            "api_calls_count": metrics.get('api_call_count', 0)
+            "api_calls_count": metrics.get('api_call_count', 0),
         }
 
-        has_api_token = bool(API_TOKEN)
-        has_blogs_team_token = bool(BLOGS_TEAM_TOKEN)
-        print(f"Token check: BLOG_OPTIMIZER_API_TOKEN set={has_api_token}, BLOGS_TEAM_TOKEN set={has_blogs_team_token}")
+        has_metrics_api_key = bool(METRICS_API_KEY)
+        print(f"Token check: AGENT_METRICS_API_KEY set={has_metrics_api_key}")
 
-        if not has_api_token and not has_blogs_team_token:
-            print("Skipping API reports because BLOG_OPTIMIZER_API_TOKEN and BLOGS_TEAM_TOKEN are not set.")
+        if not has_metrics_api_key:
+            print("Skipping metrics report because AGENT_METRICS_API_KEY is not set.")
             return False
 
-        original_ok = None
+        metrics_api_ok = None
         blogs_team_ok = None
 
-        # Send to original endpoint (if configured)
-        if has_api_token:
-            print(f"\nSending to Original Endpoint: {API_ENDPOINT}")
-            print(f"Original payload keys: {list(common_payload.keys())}")
-            response1 = post_json_with_optional_token(API_ENDPOINT, common_payload, API_TOKEN)
+        print(f"\nSending to Metrics API: {METRICS_API_ENDPOINT}")
+        print(f"Metrics payload keys: {list(common_payload.keys())}")
+        response = requests.put(
+            METRICS_API_ENDPOINT,
+            headers={
+                "Content-Type": "application/json",
+                "X-Api-Key": METRICS_API_KEY,
+            },
+            json=common_payload,
+            timeout=10,
+        )
 
-            print(f"Original Endpoint Status: {response1.status_code}")
-            if response1.status_code == 200:
-                response1_text = (response1.text or "").strip()
-                logical_error = False
-                if response1_text:
-                    print(f"Original endpoint response: {response1_text[:500]}")
-                    try:
-                        parsed = json.loads(response1_text)
-                        if isinstance(parsed, dict):
-                            if parsed.get("error"):
-                                logical_error = True
-                            parsed_status = parsed.get("status")
-                            if parsed_status is not None:
-                                try:
-                                    if int(parsed_status) >= 400:
-                                        logical_error = True
-                                except (TypeError, ValueError):
-                                    pass
-                            if parsed.get("success") is False:
-                                logical_error = True
-                    except json.JSONDecodeError:
-                        lower_body = response1_text.lower()
-                        if "invalid token" in lower_body or "error" in lower_body:
+        response_text = (response.text or "").strip()
+        print(f"Metrics API Status: {response.status_code}")
+        if response_text:
+            print(f"Metrics API response: {response_text[:500]}")
+
+        logical_error = False
+        if 200 <= response.status_code < 300:
+            if response_text:
+                try:
+                    parsed = json.loads(response_text)
+                    if isinstance(parsed, dict):
+                        if parsed.get("error"):
                             logical_error = True
+                        parsed_status = parsed.get("status")
+                        if parsed_status is not None:
+                            try:
+                                if int(parsed_status) >= 400:
+                                    logical_error = True
+                            except (TypeError, ValueError):
+                                pass
+                        if parsed.get("success") is False:
+                            logical_error = True
+                except json.JSONDecodeError:
+                    lower_body = response_text.lower()
+                    if "error" in lower_body or "invalid" in lower_body:
+                        logical_error = True
 
-                if logical_error:
-                    print("✗ Original endpoint returned an application-level error despite HTTP 200.")
-                    original_ok = False
-                else:
-                    print("✓ Original endpoint report sent successfully!")
-                    original_ok = True
+            # Summary
+            print("\n" + "="*60)
+            print("METRICS API REPORT SUMMARY")
+            print("="*60)
+            print(f"Timestamp (GMT+5): {timestamp}")
+            print(f"Product: {product}")
+            print(f"Website: {website}")
+            print(f"Platform: {common_payload.get('platform')}")
+            print(f"Status: {status}")
+            print(f"Environment: {env}")
+            print(f"Run ID: {run_id}")
+            print(f"Discovered: {metrics.get('items_discovered', 0)}")
+            print(f"Succeeded: {metrics.get('items_succeeded', 0)}")
+            print(f"Failed: {metrics.get('items_failed', 0)}")
+            print(f"Duration: {metrics.get('run_duration_ms', 0)}ms")
+            print(f"Token Usage: {metrics.get('token_usage', 0)}")
+            print(f"API Call Count: {metrics.get('api_call_count', 0)}")
+            print("="*60)
+
+            if logical_error:
+                print("✗ Metrics API returned an application-level error despite HTTP success.")
+                metrics_api_ok = False
             else:
-                print(f"✗ Original endpoint failed: {response1.text[:500]}")
-                original_ok = False
+                print("✓ Metrics API report sent successfully!")
+                metrics_api_ok = True
+
         else:
-            print("\nSkipping Original Endpoint because BLOG_OPTIMIZER_API_TOKEN is not set.")
+            print(f"✗ Metrics API failed: {response_text[:500]}")
+            metrics_api_ok = False
 
-        # Prepare payload for Blogs Team Metrics (add run_env field)
-        blogs_team_payload = common_payload.copy()
-        blogs_team_payload["run_env"] = env
+        # Keep the blogs team metrics path intact.
+        blog_team_payload = common_payload.copy()
+        blog_team_payload["run_env"] = env
+        has_blogs_team_token = bool(BLOGS_TEAM_TOKEN)
+        print(f"Token check: BLOGS_TEAM_TOKEN set={has_blogs_team_token}")
 
-        # Send to Blogs Team Metrics endpoint (if configured)
         if has_blogs_team_token:
             print(f"\nSending to Blogs Team Metrics Endpoint: {BLOGS_TEAM_ENDPOINT}")
-            print(f"Blogs Team payload keys: {list(blogs_team_payload.keys())}")
-            response2 = post_json_with_optional_token(
+            print(f"Blogs Team payload keys: {list(blog_team_payload.keys())}")
+            response2 = post_json_with_query_token(
                 BLOGS_TEAM_ENDPOINT,
-                blogs_team_payload,
+                blog_team_payload,
                 BLOGS_TEAM_TOKEN,
             )
 
@@ -918,7 +934,7 @@ def send_api_report(
                     blogs_team_ok = False
                 else:
                     print("✓ Blogs Team Metrics report sent successfully!")
-                    print(f"  run_env: {blogs_team_payload['run_env']}")
+                    print(f"  run_env: {blog_team_payload['run_env']}")
                     blogs_team_ok = True
             else:
                 print(f"✗ Blogs Team Metrics failed: {response2.text[:500]}")
@@ -926,7 +942,9 @@ def send_api_report(
         else:
             print("\nSkipping Blogs Team Metrics because BLOGS_TEAM_TOKEN is not set.")
 
-        # Summary
+        if metrics_api_ok is None:
+            metrics_api_ok = False
+
         print("\n" + "="*60)
         print("API REPORTS SUMMARY")
         print("="*60)
@@ -945,10 +963,11 @@ def send_api_report(
         print(f"API Call Count: {metrics.get('api_call_count', 0)}")
         print("="*60)
 
-        configured_results = [r for r in [original_ok, blogs_team_ok] if r is not None]
+        configured_results = [r for r in [metrics_api_ok, blogs_team_ok] if r is not None]
         if not configured_results:
             print("No API endpoint was configured with a token; nothing was sent.")
             return False
+
         all_ok = all(configured_results)
         print(f"Metrics reporting result: success={all_ok}, endpoint_results={configured_results}")
         return all_ok
