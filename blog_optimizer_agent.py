@@ -729,6 +729,30 @@ def has_language_code_prefix(url: str):
 # ----------------------------------------------------
 # 4. API Reporting Functions
 # ----------------------------------------------------
+def post_json_with_optional_token(
+    endpoint: str,
+    payload: dict,
+    token: str | None = None,
+    timeout: int = 10,
+):
+    """
+    Send a JSON POST request without placing secrets in the URL.
+
+    The token is carried in the JSON body so it can be validated server-side
+    without leaking through logs, proxies, or browser history.
+    """
+    request_payload = dict(payload)
+    if token:
+        request_payload["token"] = token
+
+    return requests.post(
+        endpoint,
+        headers={"Content-Type": "application/json"},
+        json=request_payload,
+        timeout=timeout,
+    )
+
+
 def send_api_report(
     status: str,
     metrics: dict,
@@ -809,15 +833,9 @@ def send_api_report(
 
         # Send to original endpoint (if configured)
         if has_api_token:
-            original_url = f"{API_ENDPOINT}?token=<redacted>"
-            print(f"\nSending to Original Endpoint: {original_url}")
+            print(f"\nSending to Original Endpoint: {API_ENDPOINT}")
             print(f"Original payload keys: {list(common_payload.keys())}")
-            response1 = requests.post(
-                f"{API_ENDPOINT}?token={API_TOKEN}",
-                headers={"Content-Type": "application/json"},
-                data=json.dumps(common_payload),
-                timeout=10
-            )
+            response1 = post_json_with_optional_token(API_ENDPOINT, common_payload, API_TOKEN)
 
             print(f"Original Endpoint Status: {response1.status_code}")
             if response1.status_code == 200:
@@ -862,14 +880,12 @@ def send_api_report(
 
         # Send to Blogs Team Metrics endpoint (if configured)
         if has_blogs_team_token:
-            blogs_team_url = f"{BLOGS_TEAM_ENDPOINT}?token=<redacted>"
-            print(f"\nSending to Blogs Team Metrics Endpoint: {blogs_team_url}")
+            print(f"\nSending to Blogs Team Metrics Endpoint: {BLOGS_TEAM_ENDPOINT}")
             print(f"Blogs Team payload keys: {list(blogs_team_payload.keys())}")
-            response2 = requests.post(
-                f"{BLOGS_TEAM_ENDPOINT}?token={BLOGS_TEAM_TOKEN}",
-                headers={"Content-Type": "application/json"},
-                data=json.dumps(blogs_team_payload),
-                timeout=10
+            response2 = post_json_with_optional_token(
+                BLOGS_TEAM_ENDPOINT,
+                blogs_team_payload,
+                BLOGS_TEAM_TOKEN,
             )
 
             print(f"Blogs Team Status: {response2.status_code}")
