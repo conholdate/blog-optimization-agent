@@ -744,214 +744,114 @@ def post_json_with_query_token(
     )
 
 
-def send_api_report(
+def build_metrics_report_payload(
     status: str,
     metrics: dict,
     website: str = "conholdate.com",
-    env: str = "DEV",
     product_override: str = None,
-    platform_override: str = None
+    platform_override: str = None,
 ):
-    """
-    Send job completion report to the metrics API.
-    """
+    """Build the canonical payload shared by both reporting destinations."""
+    gmt5 = timezone(timedelta(hours=5))
+    current_time = datetime.now(gmt5)
+    timestamp = current_time.isoformat(timespec="milliseconds")
+
+    product = product_override or "Conholdate"
+    if not product_override:
+        if website == "aspose.com":
+            product = "Aspose"
+        elif website == "groupdocs.com":
+            product = "GroupDocs"
+
+    random_suffix = random.randint(10000, 99999)
+    run_id = f"blog_optimizer_{random_suffix}"
+
+    payload = {
+        "timestamp": timestamp,
+        "agent_name": "Blog Optimizer",
+        "agent_owner": "Farhan Raza",
+        "job_type": "Blog Optimization",
+        "run_id": run_id,
+        "status": status,
+        "product": product,
+        "platform": platform_override or "All",
+        "website": website,
+        "website_section": "Blog",
+        "item_name": "Blog Posts",
+        "items_discovered": metrics.get("items_discovered", 0),
+        "items_failed": metrics.get("items_failed", 0),
+        "items_succeeded": metrics.get("items_succeeded", 0),
+        "run_duration_ms": metrics.get("run_duration_ms", 0),
+        "token_usage": metrics.get("token_usage", 0),
+        "api_calls_count": metrics.get("api_call_count", 0),
+    }
+    return payload, timestamp, product, run_id
+
+
+def response_has_logical_error(response_text: str) -> bool:
+    """Detect success responses that still encode an application-level error."""
+    if not response_text:
+        return False
+
     try:
-        print("\n" + "="*60)
-        print("METRICS API REPORTING TRACE")
-        print("="*60)
-        print(f"Incoming status: {status}")
-        print(f"Incoming website: {website}")
-        print(f"Incoming env: {env}")
-        print(f"Incoming metrics: {json.dumps(metrics, default=str)}")
-
-        if status != "success":
-            print("Skipping metrics because of status.")
-            return False
-
-        # Create GMT+5 timezone (Pakistan Standard Time)
-        gmt5 = timezone(timedelta(hours=5))
-
-        # Get current time in GMT+5
-        current_time = datetime.now(gmt5)
-
-        # Format timestamp in ISO format with GMT+5 timezone
-        timestamp = current_time.isoformat(timespec='milliseconds')
-
-        # Determine product based on website (or explicit family override).
-        product = product_override or "Conholdate"
-        if not product_override:
-            if website == "aspose.com":
-                product = "Aspose"
-            elif website == "groupdocs.com":
-                product = "GroupDocs"
-
-        # Generate random 5-digit number and create run_id
-        random_suffix = random.randint(10000, 99999)
-        run_id = f"blog_optimizer_{random_suffix}"
-
-        # Prepare the common payload
-        common_payload = {
-            "timestamp": timestamp,
-            "agent_name": "Blog Optimizer",
-            "agent_owner": "Farhan Raza",
-            "job_type": "Blog Optimization",
-            "run_id": run_id,
-            "status": status,
-            "product": product,
-            "platform": platform_override or "All",
-            "website": website,
-            "website_section": "Blog",
-            "item_name": "Blog Posts",
-            "items_discovered": metrics.get('items_discovered', 0),
-            "items_failed": metrics.get('items_failed', 0),
-            "items_succeeded": metrics.get('items_succeeded', 0),
-            "run_duration_ms": metrics.get('run_duration_ms', 0),
-            "token_usage": metrics.get('token_usage', 0),
-            "api_calls_count": metrics.get('api_call_count', 0),
-        }
-
-        has_metrics_api_key = bool(METRICS_API_KEY)
-        print(f"Token check: AGENT_METRICS_API_KEY set={has_metrics_api_key}")
-
-        if not has_metrics_api_key:
-            print("Skipping metrics report because AGENT_METRICS_API_KEY is not set.")
-            return False
-
-        metrics_api_ok = None
-        blogs_team_ok = None
-
-        print(f"\nSending to Metrics API: {METRICS_API_ENDPOINT}")
-        print(f"Metrics payload keys: {list(common_payload.keys())}")
-        response = requests.put(
-            METRICS_API_ENDPOINT,
-            headers={
-                "Content-Type": "application/json",
-                "X-Api-Key": METRICS_API_KEY,
-            },
-            json=common_payload,
-            timeout=10,
-        )
-
-        response_text = (response.text or "").strip()
-        print(f"Metrics API Status: {response.status_code}")
-        if response_text:
-            print(f"Metrics API response: {response_text[:500]}")
-
-        logical_error = False
-        if 200 <= response.status_code < 300:
-            if response_text:
+        parsed = json.loads(response_text)
+        if isinstance(parsed, dict):
+            if parsed.get("error"):
+                return True
+            parsed_status = parsed.get("status")
+            if parsed_status is not None:
                 try:
-                    parsed = json.loads(response_text)
-                    if isinstance(parsed, dict):
-                        if parsed.get("error"):
-                            logical_error = True
-                        parsed_status = parsed.get("status")
-                        if parsed_status is not None:
-                            try:
-                                if int(parsed_status) >= 400:
-                                    logical_error = True
-                            except (TypeError, ValueError):
-                                pass
-                        if parsed.get("success") is False:
-                            logical_error = True
-                except json.JSONDecodeError:
-                    lower_body = response_text.lower()
-                    if "error" in lower_body or "invalid" in lower_body:
-                        logical_error = True
+                    if int(parsed_status) >= 400:
+                        return True
+                except (TypeError, ValueError):
+                    pass
+            if parsed.get("success") is False:
+                return True
+    except json.JSONDecodeError:
+        lower_body = response_text.lower()
+        if "error" in lower_body or "invalid" in lower_body:
+            return True
 
-            # Summary
-            print("\n" + "="*60)
-            print("METRICS API REPORT SUMMARY")
-            print("="*60)
-            print(f"Timestamp (GMT+5): {timestamp}")
-            print(f"Product: {product}")
-            print(f"Website: {website}")
-            print(f"Platform: {common_payload.get('platform')}")
-            print(f"Status: {status}")
-            print(f"Environment: {env}")
-            print(f"Run ID: {run_id}")
-            print(f"Discovered: {metrics.get('items_discovered', 0)}")
-            print(f"Succeeded: {metrics.get('items_succeeded', 0)}")
-            print(f"Failed: {metrics.get('items_failed', 0)}")
-            print(f"Duration: {metrics.get('run_duration_ms', 0)}ms")
-            print(f"Token Usage: {metrics.get('token_usage', 0)}")
-            print(f"API Call Count: {metrics.get('api_call_count', 0)}")
-            print("="*60)
+    return False
 
-            if logical_error:
-                print("✗ Metrics API returned an application-level error despite HTTP success.")
-                metrics_api_ok = False
-            else:
-                print("✓ Metrics API report sent successfully!")
-                metrics_api_ok = True
 
-        else:
-            print(f"✗ Metrics API failed: {response_text[:500]}")
-            metrics_api_ok = False
+def send_metrics_api_report(
+    payload: dict,
+    timestamp: str,
+    product: str,
+    website: str,
+    status: str,
+    env: str,
+    run_id: str,
+    metrics: dict,
+) -> bool:
+    """Send the primary metrics API report."""
+    print(f"\nSending to Metrics API: {METRICS_API_ENDPOINT}")
+    print(f"Metrics payload keys: {list(payload.keys())}")
+    response = requests.put(
+        METRICS_API_ENDPOINT,
+        headers={
+            "Content-Type": "application/json",
+            "X-Api-Key": METRICS_API_KEY,
+        },
+        json=payload,
+        timeout=10,
+    )
 
-        # Keep the blogs team metrics path intact.
-        blog_team_payload = common_payload.copy()
-        blog_team_payload["run_env"] = env
-        has_blogs_team_token = bool(BLOGS_TEAM_TOKEN)
-        print(f"Token check: BLOGS_TEAM_TOKEN set={has_blogs_team_token}")
+    response_text = (response.text or "").strip()
+    print(f"Metrics API Status: {response.status_code}")
+    if response_text:
+        print(f"Metrics API response: {response_text[:500]}")
 
-        if has_blogs_team_token:
-            print(f"\nSending to Blogs Team Metrics Endpoint: {BLOGS_TEAM_ENDPOINT}")
-            print(f"Blogs Team payload keys: {list(blog_team_payload.keys())}")
-            response2 = post_json_with_query_token(
-                BLOGS_TEAM_ENDPOINT,
-                blog_team_payload,
-                BLOGS_TEAM_TOKEN,
-            )
-
-            print(f"Blogs Team Status: {response2.status_code}")
-            if response2.status_code == 200:
-                response2_text = (response2.text or "").strip()
-                logical_error = False
-                if response2_text:
-                    print(f"Blogs Team endpoint response: {response2_text[:500]}")
-                    try:
-                        parsed = json.loads(response2_text)
-                        if isinstance(parsed, dict):
-                            if parsed.get("error"):
-                                logical_error = True
-                            parsed_status = parsed.get("status")
-                            if parsed_status is not None:
-                                try:
-                                    if int(parsed_status) >= 400:
-                                        logical_error = True
-                                except (TypeError, ValueError):
-                                    pass
-                            if parsed.get("success") is False:
-                                logical_error = True
-                    except json.JSONDecodeError:
-                        lower_body = response2_text.lower()
-                        if "invalid token" in lower_body or "error" in lower_body:
-                            logical_error = True
-
-                if logical_error:
-                    print("✗ Blogs Team endpoint returned an application-level error despite HTTP 200.")
-                    blogs_team_ok = False
-                else:
-                    print("✓ Blogs Team Metrics report sent successfully!")
-                    print(f"  run_env: {blog_team_payload['run_env']}")
-                    blogs_team_ok = True
-            else:
-                print(f"✗ Blogs Team Metrics failed: {response2.text[:500]}")
-                blogs_team_ok = False
-        else:
-            print("\nSkipping Blogs Team Metrics because BLOGS_TEAM_TOKEN is not set.")
-
-        if metrics_api_ok is None:
-            metrics_api_ok = False
-
-        print("\n" + "="*60)
-        print("API REPORTS SUMMARY")
-        print("="*60)
+    if 200 <= response.status_code < 300:
+        logical_error = response_has_logical_error(response_text)
+        print("\n" + "=" * 60)
+        print("METRICS API REPORT SUMMARY")
+        print("=" * 60)
         print(f"Timestamp (GMT+5): {timestamp}")
         print(f"Product: {product}")
         print(f"Website: {website}")
-        print(f"Platform: {common_payload.get('platform')}")
+        print(f"Platform: {payload.get('platform')}")
         print(f"Status: {status}")
         print(f"Environment: {env}")
         print(f"Run ID: {run_id}")
@@ -961,7 +861,132 @@ def send_api_report(
         print(f"Duration: {metrics.get('run_duration_ms', 0)}ms")
         print(f"Token Usage: {metrics.get('token_usage', 0)}")
         print(f"API Call Count: {metrics.get('api_call_count', 0)}")
-        print("="*60)
+        print("=" * 60)
+
+        if logical_error:
+            print("✗ Metrics API returned an application-level error despite HTTP success.")
+            return False
+
+        print("✓ Metrics API report sent successfully!")
+        return True
+
+    print(f"✗ Metrics API failed: {response_text[:500]}")
+    return False
+
+
+def send_blogs_team_report(
+    payload: dict,
+    env: str,
+) -> bool:
+    """Send the legacy Blogs Team metrics report."""
+    has_blogs_team_token = bool(BLOGS_TEAM_TOKEN)
+    print(f"Token check: BLOGS_TEAM_TOKEN set={has_blogs_team_token}")
+
+    if not has_blogs_team_token:
+        print("\nSkipping Blogs Team Metrics because BLOGS_TEAM_TOKEN is not set.")
+        return False
+
+    blog_team_payload = payload.copy()
+    blog_team_payload["run_env"] = env
+
+    print(f"\nSending to Blogs Team Metrics Endpoint: {BLOGS_TEAM_ENDPOINT}")
+    print(f"Blogs Team payload keys: {list(blog_team_payload.keys())}")
+    response = post_json_with_query_token(
+        BLOGS_TEAM_ENDPOINT,
+        blog_team_payload,
+        BLOGS_TEAM_TOKEN,
+    )
+
+    print(f"Blogs Team Status: {response.status_code}")
+    if response.status_code == 200:
+        response_text = (response.text or "").strip()
+        if response_text:
+            print(f"Blogs Team endpoint response: {response_text[:500]}")
+        if response_has_logical_error(response_text):
+            print("✗ Blogs Team endpoint returned an application-level error despite HTTP 200.")
+            return False
+
+        print("✓ Blogs Team Metrics report sent successfully!")
+        print(f"  run_env: {blog_team_payload['run_env']}")
+        return True
+
+    print(f"✗ Blogs Team Metrics failed: {response.text[:500]}")
+    return False
+
+
+def send_api_report(
+    status: str,
+    metrics: dict,
+    website: str = "conholdate.com",
+    env: str = "DEV",
+    product_override: str = None,
+    platform_override: str = None
+):
+    """
+    Orchestrate the metrics API and blogs-team reports.
+    """
+    try:
+        print("\n" + "=" * 60)
+        print("METRICS API REPORTING TRACE")
+        print("=" * 60)
+        print(f"Incoming status: {status}")
+        print(f"Incoming website: {website}")
+        print(f"Incoming env: {env}")
+        print(f"Incoming metrics: {json.dumps(metrics, default=str)}")
+
+        if status != "success":
+            print("Skipping metrics because of status.")
+            return False
+
+        if not METRICS_API_KEY and not BLOGS_TEAM_TOKEN:
+            print("Skipping metrics report because no reporting secrets are set.")
+            return False
+
+        payload, timestamp, product, run_id = build_metrics_report_payload(
+            status=status,
+            metrics=metrics,
+            website=website,
+            product_override=product_override,
+            platform_override=platform_override,
+        )
+
+        print(f"Token check: AGENT_METRICS_API_KEY set={bool(METRICS_API_KEY)}")
+        metrics_api_ok = None
+        if METRICS_API_KEY:
+            metrics_api_ok = send_metrics_api_report(
+                payload=payload,
+                timestamp=timestamp,
+                product=product,
+                website=website,
+                status=status,
+                env=env,
+                run_id=run_id,
+                metrics=metrics,
+            )
+        else:
+            print("Skipping metrics report because AGENT_METRICS_API_KEY is not set.")
+
+        blogs_team_ok = None
+        if BLOGS_TEAM_TOKEN:
+            blogs_team_ok = send_blogs_team_report(payload, env)
+
+        print("\n" + "=" * 60)
+        print("API REPORTS SUMMARY")
+        print("=" * 60)
+        print(f"Timestamp (GMT+5): {timestamp}")
+        print(f"Product: {product}")
+        print(f"Website: {website}")
+        print(f"Platform: {payload.get('platform')}")
+        print(f"Status: {status}")
+        print(f"Environment: {env}")
+        print(f"Run ID: {run_id}")
+        print(f"Discovered: {metrics.get('items_discovered', 0)}")
+        print(f"Succeeded: {metrics.get('items_succeeded', 0)}")
+        print(f"Failed: {metrics.get('items_failed', 0)}")
+        print(f"Duration: {metrics.get('run_duration_ms', 0)}ms")
+        print(f"Token Usage: {metrics.get('token_usage', 0)}")
+        print(f"API Call Count: {metrics.get('api_call_count', 0)}")
+        print("=" * 60)
 
         configured_results = [r for r in [metrics_api_ok, blogs_team_ok] if r is not None]
         if not configured_results:
@@ -2141,7 +2166,7 @@ if __name__ == "__main__":
                    choices=['aspose', 'aspose-cloud', 'conholdate', 'conholdate-cloud', 'groupdocs', 'groupdocs-cloud'],
                    help="Brand to process")
     parser.add_argument("--limit", type=int, default=3,
-                       help="Daily limit per domain (default: 1, use 0 for no limit)")
+                       help="Daily limit per domain (default: 3, use 0 for no limit)")
 
     args = parser.parse_args()
 
