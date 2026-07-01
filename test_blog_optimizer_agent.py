@@ -1,14 +1,23 @@
 import os
 import unittest
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 
 # blog_optimizer_agent.py reads its API key at import time.
-os.environ.setdefault("PROFESSIONALIZE_API_KEY_OPTIMIZER", "test-key")
-os.environ.setdefault("AGENT_METRICS_API_KEY", "test-metrics-key")
-os.environ.setdefault("BLOGS_TEAM_TOKEN", "test-blogs-team-token")
+os.environ["PROFESSIONALIZE_API_KEY_OPTIMIZER"] = "test-key"
+os.environ["AGENT_METRICS_API_KEY"] = "test-metrics-key"
+os.environ["BLOGS_TEAM_TOKEN"] = "test-blogs-team-token"
 
-from blog_optimizer_agent import clean_optimized_content, send_api_report
+from blog_optimizer_agent import (
+    clean_optimized_content,
+    candidate_csv_path_for_brand,
+    get_optimization_strategy,
+    load_recommendation_lookup,
+    lookup_recommended_action,
+    send_api_report,
+)
 
 
 class BlogOptimizerAgentTests(unittest.TestCase):
@@ -93,6 +102,47 @@ lastmod: 2026-06-09
         cleaned = clean_optimized_content(content)
 
         self.assertIn('{{ .Params.example | printf "&lt;span&gt;%s&lt;/span&gt;" }}', cleaned)
+
+    def test_load_recommendation_lookup_reads_structured_action_code(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = Path(tmpdir) / "aspose_candidates.csv"
+            csv_path.write_text(
+                "page,Recommended Action Reason,Recommended Action\n"
+                "https://example.com/post/,borderline second-page ranking with unstable trend,TITLE_META\n",
+                encoding="utf-8",
+            )
+
+            lookup = load_recommendation_lookup(csv_path)
+            recommendation = lookup_recommended_action("https://example.com/post/", lookup)
+
+        self.assertEqual(recommendation["code"], "TITLE_META")
+        self.assertEqual(
+            recommendation["reason"],
+            "borderline second-page ranking with unstable trend",
+        )
+
+    def test_get_optimization_strategy_changes_by_code(self):
+        title_meta = get_optimization_strategy("TITLE_META")
+        full_refresh = get_optimization_strategy("FULL_REFRESH")
+
+        self.assertEqual(title_meta["code"], "TITLE_META")
+        self.assertIn("metadata", title_meta["scope"].lower())
+        self.assertEqual(full_refresh["code"], "FULL_REFRESH")
+        self.assertIn("deeper refresh", full_refresh["scope"].lower())
+
+    def test_candidate_csv_path_changes_by_brand(self):
+        self.assertEqual(
+            str(candidate_csv_path_for_brand("aspose")),
+            "csv/aspose_candidates.csv",
+        )
+        self.assertEqual(
+            str(candidate_csv_path_for_brand("conholdate")),
+            "csv/conholdate_candidates.csv",
+        )
+        self.assertEqual(
+            str(candidate_csv_path_for_brand("groupdocs-cloud")),
+            "csv/groupdocs_cloud_candidates.csv",
+        )
 
 
 if __name__ == "__main__":
