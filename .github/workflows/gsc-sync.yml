@@ -22,37 +22,37 @@ jobs:
       matrix:
         include:
           - name: blog.aspose.com
-            script: GSC-aspose.com.py
+            script: gsc_aspose_com.py
             repo: Aspose/aspose-blog
             path: aspose-blog
             default_branch: master
             csv_file: csv/aspose.csv
           - name: blog.aspose.cloud
-            script: GSC-aspose.cloud.py
+            script: gsc_aspose_cloud.py
             repo: aspose-cloud/aspose-cloud-blog
             path: aspose-cloud-blog
             default_branch: master
             csv_file: csv/aspose-cloud.csv
           - name: blog.conholdate.com
-            script: GSC-conholdate.com.py
+            script: gsc_conholdate_com.py
             repo: conholdate/conholdate-blog
             path: conholdate-blog
             default_branch: main
             csv_file: csv/conholdate.csv
           - name: blog.conholdate.cloud
-            script: GSC-conholdate.cloud.py
+            script: gsc_conholdate_cloud.py
             repo: conholdate-cloud/blog.conholdate.cloud
             path: blog.conholdate.cloud
             default_branch: main
             csv_file: csv/conholdate-cloud.csv
           - name: blog.groupdocs.com
-            script: GSC-groupdocs.com.py
+            script: gsc_groupdocs_com.py
             repo: groupdocs/groupdocs-blog
             path: groupdocs-blog
             default_branch: master
             csv_file: csv/groupdocs.csv
           - name: blog.groupdocs.cloud
-            script: GSC-groupdocs.cloud.py
+            script: gsc_groupdocs_cloud.py
             repo: groupdocs-cloud/groupdocs-cloud-blog
             path: groupdocs-cloud-blog
             default_branch: master
