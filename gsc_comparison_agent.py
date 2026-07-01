@@ -17,6 +17,8 @@ Exclusion rules applied to both outputs:
   • High-click URLs: any URL with >= HIGH_CLICK_THRESHOLD clicks in ANY
     period is excluded from the candidates file (still kept in all_periods).
   • CTR band: 1% – 4% in the ANCHOR period (12 months) for candidates.
+  • Position gate: any URL with position < POSITION_THRESHOLD in any
+    available period is excluded from the candidates file.
 
 Pattern labels (column "trend_pattern"):
   improving          CTR rises across all three windows  (3m > 6m > 12m)
@@ -62,6 +64,8 @@ CTR_THRESHOLD      = 0.01        # 1%  — lower bound for candidate CTR filter
 CTR_MAX_THRESHOLD  = 0.04        # 4%  — upper bound
 CTR_GOOD_THRESHOLD = 0.03        # 3%  — used to label "continuously_good"
 CTR_BAD_THRESHOLD  = 0.01        # 1%  — used to label "continuously_bad"
+POSITION_THRESHOLD = 15          # URLs with position < this value are
+                                 # excluded from the candidates CSV
 
 # Time windows: (label, days_back)
 PERIODS = [
@@ -140,6 +144,16 @@ def label_trend(row, period_labels):
         return "declining"
 
     return "volatile"
+
+
+def min_position_across_periods(row, period_labels):
+    """Return the best ranking position observed across available periods."""
+    position_cols = [f"position_{p}" for p in period_labels]
+    positions = pd.to_numeric([row.get(c) for c in position_cols], errors="coerce")
+    valid_positions = positions[~pd.isna(positions)]
+    if len(valid_positions) == 0:
+        return float("nan")
+    return float(valid_positions.min())
 
 
 def build_wide_table(period_dfs: dict) -> pd.DataFrame:
@@ -232,6 +246,10 @@ def main():
     click_cols = [f"clicks_{p}" for p in period_labels]
     wide["max_clicks_any_period"] = wide[click_cols].max(axis=1)
     wide["high_click_url"] = wide["max_clicks_any_period"] >= HIGH_CLICK_THRESHOLD
+    wide["min_position_any_period"] = wide.apply(
+        lambda row: min_position_across_periods(row, period_labels), axis=1
+    )
+    wide["position_ok"] = wide["min_position_any_period"] >= POSITION_THRESHOLD
 
     # 6) Enrich with publish age
     print("\nEnriching with publish dates …")
@@ -241,7 +259,14 @@ def main():
     ordered_cols = ["page"]
     for p in period_labels:
         ordered_cols += [f"clicks_{p}", f"impressions_{p}", f"ctr_{p}", f"position_{p}"]
-    ordered_cols += ["trend_pattern", "max_clicks_any_period", "high_click_url", "days_since_published"]
+    ordered_cols += [
+        "trend_pattern",
+        "max_clicks_any_period",
+        "high_click_url",
+        "min_position_any_period",
+        "position_ok",
+        "days_since_published",
+    ]
     # Keep any extra columns that might exist
     extra = [c for c in wide.columns if c not in ordered_cols]
     wide = wide[ordered_cols + extra]
@@ -276,9 +301,15 @@ def main():
     candidates = candidates[~candidates["high_click_url"]]
     hc_removed = before_hc - len(candidates)
 
+    # Exclude URLs that rank too well in any available period
+    before_pos = len(candidates)
+    candidates = candidates[candidates["position_ok"]]
+    pos_removed = before_pos - len(candidates)
+
     print(f"\nCandidates filter:")
     print(f"  CTR {CTR_THRESHOLD:.0%}–{CTR_MAX_THRESHOLD:.0%} in {anchor} window → {before_hc:,} URLs")
     print(f"  Removed {hc_removed:,} high-click URLs (>= {HIGH_CLICK_THRESHOLD} clicks in any period)")
+    print(f"  Removed {pos_removed:,} URLs with position < {POSITION_THRESHOLD} in any available period")
     print(f"  Final candidates: {len(candidates):,} URLs")
 
     # Pattern breakdown
