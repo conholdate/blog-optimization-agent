@@ -1488,6 +1488,240 @@ def extract_slug_from_url(url: str):
         pass
     return ""
 
+
+RECOMMENDED_ACTION_TITLE_META = "TITLE_META"
+RECOMMENDED_ACTION_FULL_REFRESH = "FULL_REFRESH"
+RECOMMENDED_ACTION_CONTENT_PLUS_META = "CONTENT_PLUS_META"
+_RECOMMENDATION_LOOKUP_CACHE = {}
+
+
+def normalize_recommended_action_code(raw_value: str) -> str | None:
+    """Normalize structured or legacy action text into a canonical code."""
+    if not raw_value:
+        return None
+
+    text = " ".join(str(raw_value).strip().split())
+    upper = text.upper()
+    compact = re.sub(r"[^A-Z0-9]+", "_", upper).strip("_")
+    if compact in {
+        RECOMMENDED_ACTION_TITLE_META,
+        RECOMMENDED_ACTION_FULL_REFRESH,
+        RECOMMENDED_ACTION_CONTENT_PLUS_META,
+    }:
+        return compact
+
+    lowered = text.lower()
+    if "content refresh + title/meta refresh" in lowered:
+        return RECOMMENDED_ACTION_CONTENT_PLUS_META
+    if "title/meta refresh" in lowered:
+        return RECOMMENDED_ACTION_TITLE_META
+    if "full content refresh" in lowered:
+        return RECOMMENDED_ACTION_FULL_REFRESH
+
+    return None
+
+
+def normalize_candidate_url(url: str) -> str:
+    """Normalize URLs for lookup against the candidate recommendation CSV."""
+    return (url or "").strip().rstrip("/")
+
+
+def candidate_csv_path_for_brand(brand: str | None) -> Path:
+    """Build the brand-specific candidate CSV path."""
+    brand_slug = (brand or "aspose").strip().lower().replace("-", "_")
+    return Path("csv") / f"{brand_slug}_candidates.csv"
+
+
+def load_recommendation_lookup(csv_path: Path) -> dict:
+    """Load URL -> recommendation mappings from a brand-specific candidate CSV."""
+    cache_key = str(csv_path.resolve()) if csv_path.exists() else str(csv_path)
+    if cache_key in _RECOMMENDATION_LOOKUP_CACHE:
+        return _RECOMMENDATION_LOOKUP_CACHE[cache_key]
+
+    lookup = {}
+    if not csv_path.exists():
+        _RECOMMENDATION_LOOKUP_CACHE[cache_key] = lookup
+        return lookup
+
+    try:
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames or []
+            url_column = None
+            for col in fieldnames:
+                if col and col.lower() in {"page", "url"}:
+                    url_column = col
+                    break
+            if not url_column:
+                for col in fieldnames:
+                    if col and "url" in col.lower():
+                        url_column = col
+                        break
+
+            recommendation_column = None
+            for col in fieldnames:
+                if col and col.strip().lower() == "recommended action":
+                    recommendation_column = col
+                    break
+
+            reason_column = None
+            for col in fieldnames:
+                if col and "reason" in col.lower() and "recommended action" in col.lower():
+                    reason_column = col
+                    break
+
+            if not url_column or not recommendation_column:
+                _RECOMMENDATION_LOOKUP_CACHE[cache_key] = lookup
+                return lookup
+
+            for row in reader:
+                url = normalize_candidate_url(row.get(url_column, ""))
+                if not url:
+                    continue
+
+                code = normalize_recommended_action_code(row.get(recommendation_column, ""))
+                reason = ""
+                if reason_column:
+                    reason = " ".join(str(row.get(reason_column, "")).strip().split())
+                if not reason and "|" in str(row.get(recommendation_column, "")):
+                    _, raw_reason = str(row.get(recommendation_column, "")).split("|", 1)
+                    reason = " ".join(raw_reason.strip().split())
+
+                if code:
+                    lookup[url] = {"code": code, "reason": reason}
+    except Exception as exc:
+        print(f"Warning: Unable to load comparison recommendations from {csv_path}: {exc}")
+
+    _RECOMMENDATION_LOOKUP_CACHE[cache_key] = lookup
+    return lookup
+
+
+def lookup_recommended_action(url: str, recommendation_lookup: dict | None = None) -> dict | None:
+    """Return the structured recommendation for a URL, if available."""
+    if not recommendation_lookup:
+        return None
+
+    normalized_url = normalize_candidate_url(url)
+    recommendation = recommendation_lookup.get(normalized_url)
+    if recommendation:
+        return recommendation
+
+    recommendation = recommendation_lookup.get(f"{normalized_url}/")
+    if recommendation:
+        return recommendation
+
+    return None
+
+
+def get_optimization_strategy(action_code: str | None) -> dict:
+    """Map a recommendation code to prompt guidance for the optimizer."""
+    code = normalize_recommended_action_code(action_code)
+
+    strategies = {
+        RECOMMENDED_ACTION_TITLE_META: {
+            "code": RECOMMENDED_ACTION_TITLE_META,
+            "label": "Title/Meta Refresh",
+            "focus": "Improve SEO title, meta description, and summary first.",
+            "scope": "Keep body edits minimal, but still protect metadata and snippet quality.",
+            "task_lines": [
+                "Improve 'seoTitle' (max 60 chars)",
+                "Improve 'description' (max 160 chars)",
+                "Improve 'summary' to be more compelling while keeping same length",
+                "Keep body changes minimal and do not rewrite the full article",
+                "Preserve headings, links, code blocks, and section order",
+            ],
+        },
+        RECOMMENDED_ACTION_FULL_REFRESH: {
+            "code": RECOMMENDED_ACTION_FULL_REFRESH,
+            "label": "Full Content Refresh",
+            "focus": "Rewrite the article more broadly while preserving structure and links.",
+            "scope": "Use a deeper refresh for weak or volatile pages.",
+            "task_lines": [
+                "Improve 'seoTitle' (max 60 chars)",
+                "Improve 'description' (max 160 chars)",
+                "Improve 'summary' to be more compelling while keeping same length",
+                "Rewrite weak sections for clarity, depth, and search intent",
+                "Preserve links, code blocks, YAML front matter, and overall article structure",
+            ],
+        },
+        RECOMMENDED_ACTION_CONTENT_PLUS_META: {
+            "code": RECOMMENDED_ACTION_CONTENT_PLUS_META,
+            "label": "Content + Meta Refresh",
+            "focus": "Refresh the body content and the metadata together.",
+            "scope": "Update the intro, weak sections, and snippet fields in one pass.",
+            "task_lines": [
+                "Improve 'seoTitle' (max 60 chars)",
+                "Improve 'description' (max 160 chars)",
+                "Improve 'summary' to be more compelling while keeping same length",
+                "Refresh the intro and weak body sections for SEO",
+                "Preserve examples, links, code blocks, and heading structure",
+            ],
+        },
+    }
+
+    if code in strategies:
+        return strategies[code]
+
+    return {
+        "code": "DEFAULT",
+        "label": "Balanced Refresh",
+        "focus": "Make sensible SEO improvements without changing the article too aggressively.",
+        "scope": "Use a moderate refresh when no recommendation code is available.",
+        "task_lines": [
+            "Improve 'seoTitle' (max 60 chars)",
+            "Improve 'description' (max 160 chars)",
+            "Improve 'summary' to be more compelling while keeping same length",
+            "Make targeted readability improvements without broad rewrites",
+            "Preserve links, code blocks, YAML front matter, and section order",
+        ],
+    }
+
+
+def build_optimization_prompt(
+    content_with_updated_lastmod: str,
+    current_date: str,
+    current_lastmod: str,
+    strategy: dict,
+    recommended_action_reason: str = "",
+) -> str:
+    """Build the optimizer prompt using the selected recommendation strategy."""
+    task_lines = "\n".join(
+        f"{index + 1}. {line}" for index, line in enumerate(strategy.get("task_lines", []))
+    )
+    reason_line = recommended_action_reason or "not provided"
+
+    return f"""You are an SEO content optimizer. Your task is to optimize ONLY the content of this blog post for SEO while PRESERVING EXACT formatting.
+
+RECOMMENDED ACTION CODE: {strategy.get('code', 'DEFAULT')}
+RECOMMENDED ACTION NAME: {strategy.get('label', 'Balanced Refresh')}
+RECOMMENDATION REASON: {reason_line}
+STRATEGY FOCUS: {strategy.get('focus', '')}
+STRATEGY SCOPE: {strategy.get('scope', '')}
+
+CRITICAL FORMATTING RULES - MUST FOLLOW:
+1. PRESERVE the EXACT YAML front matter structure (lines starting with --- to the second ---)
+2. DO NOT wrap the output in triple backticks ```markdown``` or any code fences
+3. DO NOT add any icons, emojis, or visual elements like 🚀✨📝
+4. DO NOT add any images that weren't in the original
+5. DO NOT add language identifiers like ```bash, ```csharp - use only ``` for code blocks
+6. KEEP the exact same sections in the same order as original
+7. ONLY optimize the text content for SEO and readability
+8. DO NOT change the 'date' field - keep it as: {current_date}
+9. DO NOT change the 'lastmod' field - keep it as: {current_lastmod}
+10. DO NOT change the YAML field names or structure
+11. DO NOT add tables unless they were in the original
+12. DO NOT add FAQ sections unless they were in the original
+13. DO NOT add "See Also" sections unless they were in the original
+14. Return ONLY the complete markdown file starting with ---
+
+ORIGINAL CONTENT:
+{content_with_updated_lastmod}
+
+OPTIMIZATION TASKS (ONLY DO THESE):
+{task_lines}
+
+Return the complete optimized blog post starting with "---" and ending with the content."""
+
 # ----------------------------------------------------
 # 7. Core Functions Updated for Brand Support
 # ----------------------------------------------------
@@ -1573,7 +1807,15 @@ def extract_blog_urls_from_csv(file_path: str, brand: str = None):
         print(f"CSV error: {e}")
         return []
 
-async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish_date: str, metrics: dict = None):
+async def optimize_post(
+    md_file_path: Path,
+    url: str,
+    domain_info: dict,
+    publish_date: str,
+    metrics: dict = None,
+    recommended_action_code: str = None,
+    recommended_action_reason: str = None,
+):
     """Optimize a blog post with domain-aware tracking and retry logic."""
     folder_name = md_file_path.parent.name
 
@@ -1594,6 +1836,15 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
         return False, "skipped"
 
     print(f"  Can optimize: {reason}")
+
+    strategy = get_optimization_strategy(recommended_action_code)
+    if strategy.get("code") != "DEFAULT":
+        print(
+            f"  Recommendation: {strategy['code']} - "
+            f"{recommended_action_reason or strategy.get('label', '')}"
+        )
+    elif recommended_action_reason:
+        print(f"  Recommendation: DEFAULT - {recommended_action_reason}")
 
     # Read original content from .md file
     with open(md_file_path, 'r', encoding='utf-8') as f:
@@ -1688,40 +1939,13 @@ async def optimize_post(md_file_path: Path, url: str, domain_info: dict, publish
     current_lastmod = metadata.get('lastmod', '')
 
     # Prepare strict instructions for LLM
-    prompt = f"""You are an SEO content optimizer. Your task is to optimize ONLY the content of this blog post for SEO while PRESERVING EXACT formatting.
-
-CRITICAL FORMATTING RULES - MUST FOLLOW:
-1. PRESERVE the EXACT YAML front matter structure (lines starting with --- to the second ---)
-2. DO NOT wrap the output in triple backticks ```markdown``` or any code fences
-3. DO NOT add any icons, emojis, or visual elements like 🚀✨📝
-4. DO NOT add any images that weren't in the original
-5. DO NOT add language identifiers like ```bash, ```csharp - use only ``` for code blocks
-6. KEEP the exact same sections in the same order as original
-7. ONLY optimize the text content for SEO and readability
-8. DO NOT change the 'date' field - keep it as: {current_date}
-9. DO NOT change the 'lastmod' field - keep it as: {current_lastmod}
-10. DO NOT change the YAML field names or structure
-11. DO NOT add tables unless they were in the original
-12. DO NOT add FAQ sections unless they were in the original
-13. DO NOT add "See Also" sections unless they were in the original
-14. Return ONLY the complete markdown file starting with ---
-
-ORIGINAL CONTENT:
-{content_with_updated_lastmod}
-
-OPTIMIZATION TASKS (ONLY DO THESE):
-1. Improve 'seoTitle' (max 60 chars)
-2. Improve 'description' (max 160 chars)
-3. Improve 'summary' to be more compelling while keeping same length
-4. Fix heading hierarchy if needed (ensure proper H2, H3 nesting)
-5. Simplify complex sentences for better readability
-6. Ensure code blocks use only ``` without language identifiers like bash/csharp
-7. Remove any emojis or icons
-8. Keep all existing links and references exactly as-is
-9. Do NOT change the "See Also" section links
-10. Do NOT add any new sections or headings
-
-Return the complete optimized blog post starting with "---" and ending with the content."""
+    prompt = build_optimization_prompt(
+        content_with_updated_lastmod=content_with_updated_lastmod,
+        current_date=current_date,
+        current_lastmod=current_lastmod,
+        strategy=strategy,
+        recommended_action_reason=recommended_action_reason,
+    )
 
     # Retry configuration
     max_retries = 3
@@ -1877,6 +2101,12 @@ async def main(args):
     # Ensure log directory exists
     Path(LOG_DIR).mkdir(exist_ok=True)
 
+    recommendation_csv = candidate_csv_path_for_brand(args.brand)
+    if not recommendation_csv.exists() and args.brand == "aspose":
+        legacy_candidates = Path("csv") / "aspose_candidates.csv"
+        if legacy_candidates.exists():
+            recommendation_csv = legacy_candidates
+
     # Initialize metrics
     metrics = {
         'items_discovered': 0,
@@ -1887,6 +2117,18 @@ async def main(args):
         'api_call_count': 0,
         'family_metrics': {}
     }
+
+    recommendation_lookup = load_recommendation_lookup(recommendation_csv)
+    if recommendation_lookup:
+        print(
+            f"Loaded {len(recommendation_lookup):,} recommendation mappings "
+            f"from {recommendation_csv}"
+        )
+    else:
+        print(
+            f"No recommendation mappings found in {recommendation_csv}; "
+            "using default optimization strategy."
+        )
 
     # Initialize limit settings
     limit_settings = {
@@ -2034,6 +2276,7 @@ async def main(args):
                     metric_key, family_bucket = ensure_family_metrics_bucket(metrics, family_name, platform_name)
 
                 slug = extract_slug_from_url(url)
+                recommendation = lookup_recommended_action(url, recommendation_lookup)
 
                 can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date)
 
@@ -2052,7 +2295,15 @@ async def main(args):
 
                 if metric_key:
                     metrics['_active_metric_key'] = metric_key
-                success, status = await optimize_post(md_file, url, domain_info, publish_date, metrics)
+                success, status = await optimize_post(
+                    md_file,
+                    url,
+                    domain_info,
+                    publish_date,
+                    metrics,
+                    recommended_action_code=(recommendation or {}).get("code"),
+                    recommended_action_reason=(recommendation or {}).get("reason"),
+                )
                 metrics.pop('_active_metric_key', None)
                 if status == "timeout":
                     status = "timeout_after_retries"
