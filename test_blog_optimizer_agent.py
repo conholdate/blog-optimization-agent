@@ -16,6 +16,7 @@ from blog_optimizer_agent import (
     get_optimization_strategy,
     load_recommendation_lookup,
     lookup_recommended_action,
+    resolve_input_csv_for_brand,
     send_api_report,
 )
 
@@ -143,6 +144,32 @@ lastmod: 2026-06-09
             str(candidate_csv_path_for_brand("groupdocs-cloud")),
             "csv/groupdocs_cloud_candidates.csv",
         )
+
+    def test_resolve_input_csv_prefers_candidates_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_dir = Path(tmpdir)
+            candidate_path = csv_dir / "aspose_candidates.csv"
+            candidate_path.write_text("page\nhttps://example.com/\n", encoding="utf-8")
+
+            resolved = resolve_input_csv_for_brand("aspose", csv_dir=csv_dir)
+
+            self.assertEqual(resolved, candidate_path)
+
+    def test_resolve_input_csv_falls_back_to_legacy_csv(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            legacy_path = Path(tmpdir) / "legacy.csv"
+            legacy_path.write_text("page\nhttps://example.com/\n", encoding="utf-8")
+
+            from unittest.mock import patch
+
+            with patch.dict(
+                "blog_optimizer_agent.BRAND_CONFIG",
+                {"aspose": {"csv_file": str(legacy_path)}},
+                clear=False,
+            ):
+                resolved = resolve_input_csv_for_brand("aspose", csv_dir=Path(tmpdir))
+
+        self.assertEqual(resolved, legacy_path)
 
 
 if __name__ == "__main__":
