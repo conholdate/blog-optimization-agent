@@ -643,7 +643,7 @@ def main():
         print(f"    {pattern:<22} {count:>5}")
 
     candidate_csv_stem = derive_candidate_csv_stem(PROPERTY_URL)
-    cand_path = os.path.join(CSV_FOLDER, f"{candidate_csv_stem}_candidates.csv")
+    cand_path = os.path.join(CSV_FOLDER, f"{candidate_csv_stem}.csv")
     candidates.to_csv(cand_path, index=False)
     print(f"\nSaved: {cand_path}  ({len(candidates):,} rows)")
 
