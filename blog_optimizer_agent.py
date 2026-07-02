@@ -1529,7 +1529,7 @@ def normalize_candidate_url(url: str) -> str:
 def candidate_csv_path_for_brand(brand: str | None) -> Path:
     """Build the brand-specific candidate CSV path."""
     brand_slug = (brand or "aspose").strip().lower().replace("-", "_")
-    return Path("csv") / f"{brand_slug}_candidates.csv"
+    return Path("csv") / f"{brand_slug}.csv"
 
 
 def load_recommendation_lookup(csv_path: Path) -> dict:
@@ -2103,7 +2103,7 @@ async def main(args):
 
     recommendation_csv = candidate_csv_path_for_brand(args.brand)
     if not recommendation_csv.exists() and args.brand == "aspose":
-        legacy_candidates = Path("csv") / "aspose_candidates.csv"
+        legacy_candidates = Path("csv") / "aspose.csv"
         if legacy_candidates.exists():
             recommendation_csv = legacy_candidates
 

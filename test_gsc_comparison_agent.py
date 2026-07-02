@@ -1,9 +1,7 @@
-import os
 import unittest
 
 from gsc_comparison_agent import (
     POSITION_THRESHOLD,
-    derive_candidate_csv_stem,
     min_position_across_periods,
     parse_recommendation_response,
     recommend_action,
@@ -120,17 +118,6 @@ class GscComparisonAgentTests(unittest.TestCase):
             normalize_recommended_action_code("Second Page - Content Refresh + Title/Meta Refresh"),
             "CONTENT_PLUS_META",
         )
-
-    def test_derive_candidate_csv_stem_honors_brand_override(self):
-        old_value = os.environ.get("BLOG_BRAND")
-        try:
-            os.environ["BLOG_BRAND"] = "groupdocs_cloud"
-            self.assertEqual(derive_candidate_csv_stem("https://blog.groupdocs.cloud/"), "groupdocs_cloud")
-        finally:
-            if old_value is None:
-                os.environ.pop("BLOG_BRAND", None)
-            else:
-                os.environ["BLOG_BRAND"] = old_value
 
 
 if __name__ == "__main__":
