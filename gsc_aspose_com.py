@@ -53,6 +53,7 @@ import os
 import sys
 import json
 import re
+import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
@@ -114,6 +115,16 @@ PERIODS = [
 ]
 
 CSV_FOLDER = "csv"
+WEB_APP_URL = os.getenv(
+    "ASPOSE_WEB_APP_URL",
+    "https://script.google.com/macros/s/AKfycbxPC2s79zRyDM7Dldgrlcipa_vS5H_6NDiQyslLZZPeF70c6cEVPrQt-5zFZwimvQ7jDw/exec",
+)
+SPREADSHEET_ID = os.getenv(
+    "ASPOSE_SPREADSHEET_ID",
+    "18sYeMy0pYD7-eJxBO674MCpsQy8ACCGnh9RefqPSW_A",
+)
+SHEET_NAME = "blog.aspose.com"
+UPLOAD_CHUNK_SIZE = 3000
 
 
 def derive_candidate_csv_stem(property_url: str) -> str:
@@ -137,6 +148,63 @@ def derive_candidate_csv_stem(property_url: str) -> str:
     brand = host.split(".", 1)[0] if host else "aspose"
     brand = brand.strip().lower().replace("-", "_")
     return brand or "aspose"
+
+
+def clean_row_record(record: dict) -> dict:
+    """Convert pandas/numpy values into JSON-safe primitives."""
+    cleaned = {}
+    for key, value in record.items():
+        if pd.isna(value):
+            cleaned[key] = None
+            continue
+        if isinstance(value, pd.Timestamp):
+            cleaned[key] = value.isoformat()
+            continue
+        if hasattr(value, "item"):
+            try:
+                value = value.item()
+            except Exception:
+                pass
+        cleaned[key] = value
+    return cleaned
+
+
+def send_to_google_sheets(rows, is_first_chunk=True):
+    """Send rows to the Apps Script receiver."""
+    payload = {
+        "action": "import_data",
+        "spreadsheetId": SPREADSHEET_ID,
+        "sheetName": SHEET_NAME,
+        "rows": rows,
+        "clearExisting": is_first_chunk,
+    }
+
+    try:
+        response = requests.post(
+            WEB_APP_URL,
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(payload),
+            timeout=60,
+        )
+    except requests.exceptions.Timeout:
+        print("  Upload timed out")
+        return False, None
+    except Exception as exc:
+        print(f"  Upload failed: {exc}")
+        return False, None
+
+    if response.status_code != 200:
+        print(f"  Upload HTTP error {response.status_code}: {response.text[:200]}")
+        return False, None
+
+    result = response.json()
+    if not result.get("success"):
+        print(f"  Upload error: {result.get('error', 'unknown error')}")
+        return False, result
+
+    print(f"  Upload ok: {result.get('message')}")
+    print(f"  Total rows now in sheet: {result.get('total_rows_in_sheet', 0)}")
+    return True, result
 
 
 # ---------------------------------------------------------------------------
@@ -647,11 +715,37 @@ def main():
     candidates.to_csv(cand_path, index=False)
     print(f"\nSaved: {cand_path}  ({len(candidates):,} rows)")
 
-    # 10) Summary
+    # 10) Upload to Google Sheets using the full CSV payload.
+    print("\nUploading candidate CSV to Google Sheets …")
+    upload_rows = [clean_row_record(record) for record in candidates.to_dict(orient="records")]
+    upload_success = True
+    final_upload_result = None
+    if upload_rows:
+        total_chunks = (len(upload_rows) - 1) // UPLOAD_CHUNK_SIZE + 1
+        for i in range(0, len(upload_rows), UPLOAD_CHUNK_SIZE):
+            chunk = upload_rows[i : i + UPLOAD_CHUNK_SIZE]
+            chunk_num = i // UPLOAD_CHUNK_SIZE + 1
+            print(f"  Upload chunk {chunk_num}/{total_chunks} ({len(chunk):,} rows)")
+            chunk_ok, result = send_to_google_sheets(chunk, is_first_chunk=(i == 0))
+            if not chunk_ok:
+                upload_success = False
+                break
+            final_upload_result = result
+    else:
+        print("  No candidate rows to upload.")
+
+    # 11) Summary
     print("\n" + "=" * 70)
     print("Done.")
     print(f"  {all_path}  — full picture, all URLs, all periods")
     print(f"  {cand_path} — filtered optimization candidates with trend labels")
+    if upload_rows:
+        if upload_success:
+            print(f"  Uploaded {len(upload_rows):,} rows to {SHEET_NAME}")
+            if final_upload_result and "spreadsheet_url" in final_upload_result:
+                print(f"  Sheet URL: {final_upload_result['spreadsheet_url']}")
+        else:
+            print("  Upload failed partway through.")
     print("=" * 70)
 
 
