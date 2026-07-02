@@ -1526,6 +1526,26 @@ def normalize_candidate_url(url: str) -> str:
     return (url or "").strip().rstrip("/")
 
 
+def choose_url_column(fieldnames) -> str | None:
+    """Choose the real URL column, preferring page/url over helper columns."""
+    if not fieldnames:
+        return None
+
+    exact_candidates = ["page", "url", "page_url", "pageurl"]
+    lowered = [(col, str(col).strip().lower()) for col in fieldnames if col]
+
+    for exact in exact_candidates:
+        for original, normalized in lowered:
+            if normalized == exact:
+                return original
+
+    for original, normalized in lowered:
+        if normalized.endswith("_url") and normalized not in {"high_click_url"}:
+            return original
+
+    return None
+
+
 def candidate_csv_path_for_brand(brand: str | None) -> Path:
     """Build the brand-specific candidate CSV path."""
     brand_slug = (brand or "aspose").strip().lower().replace("-", "_")
@@ -1547,16 +1567,7 @@ def load_recommendation_lookup(csv_path: Path) -> dict:
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             fieldnames = reader.fieldnames or []
-            url_column = None
-            for col in fieldnames:
-                if col and col.lower() in {"page", "url"}:
-                    url_column = col
-                    break
-            if not url_column:
-                for col in fieldnames:
-                    if col and "url" in col.lower():
-                        url_column = col
-                        break
+            url_column = choose_url_column(fieldnames)
 
             recommendation_column = None
             for col in fieldnames:
@@ -1735,12 +1746,7 @@ def extract_blog_urls_from_csv(file_path: str, brand: str = None):
         with open(file_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
 
-            url_column = None
-            for col in reader.fieldnames:
-                if 'url' in col.lower():
-                    url_column = col
-                    break
-
+            url_column = choose_url_column(reader.fieldnames)
             if not url_column and reader.fieldnames:
                 url_column = reader.fieldnames[0]
 
