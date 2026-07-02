@@ -89,13 +89,50 @@ jobs:
             default_branch: master
             csv_file: csv/groupdocs-cloud.csv
 
+    # NOTE: no job-level `if:` here — the `matrix` context is not available
+    # at jobs.<job_id>.if. Instead, the first step below computes a
+    # per-matrix-entry "should_run" flag, and every later step is gated
+    # on that step's output via `if: steps.gate.outputs.run == 'true'`.
     steps:
+      - name: Determine whether this matrix entry should run
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "${{ matrix.input_key }}" in
+              run_aspose_com)        v="${{ github.event.inputs.run_aspose_com }}" ;;
+              run_aspose_cloud)      v="${{ github.event.inputs.run_aspose_cloud }}" ;;
+              run_conholdate_com)    v="${{ github.event.inputs.run_conholdate_com }}" ;;
+              run_conholdate_cloud)  v="${{ github.event.inputs.run_conholdate_cloud }}" ;;
+              run_groupdocs_com)     v="${{ github.event.inputs.run_groupdocs_com }}" ;;
+              run_groupdocs_cloud)   v="${{ github.event.inputs.run_groupdocs_cloud }}" ;;
+              *) v="false" ;;
+            esac
+            echo "run=$v" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "run=false" >> "$GITHUB_OUTPUT"
+
+      - name: Skip notice
+        if: steps.gate.outputs.run != 'true'
+        run: echo "Skipping ${{ matrix.name }} — not selected for this trigger."
+
       # Checkout THIS repo (where workflow exists)
       - name: Checkout current repository
+        if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4
 
       # Checkout target blog repo (private) using PAT
       - name: Checkout blog content repository
+        if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4
         with:
           repository: ${{ matrix.repo }}
@@ -105,16 +142,19 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Python
+        if: steps.gate.outputs.run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pandas searchconsole google-auth google-auth-oauthlib google-auth-httplib2
 
       - name: Write Google OAuth files
+        if: steps.gate.outputs.run == 'true'
         env:
           GSC_CLIENT_SECRET_JSON: ${{ secrets.GSC_CLIENT_SECRET_JSON }}
           GSC_CREDENTIALS_JSON: ${{ secrets.GSC_CREDENTIALS_JSON }}
@@ -126,11 +166,13 @@ jobs:
           fi
 
       - name: Run ${{ matrix.name }} export
+        if: steps.gate.outputs.run == 'true'
         env:
           BLOG_CONTENT_ROOT: ${{ github.workspace }}/${{ matrix.path }}
         run: python ${{ matrix.script }}
 
       - name: Verify Days Since Published in CSV
+        if: steps.gate.outputs.run == 'true'
         run: |
           python3 - <<'PY'
           import csv
@@ -154,6 +196,7 @@ jobs:
           PY
 
       - name: Commit CSV outputs
+        if: steps.gate.outputs.run == 'true'
         run: |
           git config user.name "Optimizer Agent"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -195,6 +238,6 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Cleanup OAuth files
-        if: always()
+        if: always() && steps.gate.outputs.run == 'true'
         run: |
           rm -f client_secret.json credentials.json
