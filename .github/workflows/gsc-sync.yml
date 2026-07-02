@@ -89,17 +89,6 @@ jobs:
             default_branch: master
             csv_file: csv/groupdocs-cloud.csv
 
-    if: >
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && (
-        (matrix.input_key == 'run_aspose_com' && github.event.inputs.run_aspose_com == 'true') ||
-        (matrix.input_key == 'run_aspose_cloud' && github.event.inputs.run_aspose_cloud == 'true') ||
-        (matrix.input_key == 'run_conholdate_com' && github.event.inputs.run_conholdate_com == 'true') ||
-        (matrix.input_key == 'run_conholdate_cloud' && github.event.inputs.run_conholdate_cloud == 'true') ||
-        (matrix.input_key == 'run_groupdocs_com' && github.event.inputs.run_groupdocs_com == 'true') ||
-        (matrix.input_key == 'run_groupdocs_cloud' && github.event.inputs.run_groupdocs_cloud == 'true')
-      ))
-
     steps:
       # Checkout THIS repo (where workflow exists)
       - name: Checkout current repository
