@@ -75,6 +75,12 @@ from gsc_processing_utils import (
 load_dotenv()
 
 PROPERTY_URL = os.getenv("GSC_PROPERTY_URL", "https://blog.aspose.com/")
+PROPERTY_HOST = urlparse(PROPERTY_URL).hostname or urlparse(PROPERTY_URL).netloc or "blog.aspose.com"
+PROPERTY_HOST = PROPERTY_HOST.split(":", 1)[0].lower()
+CONTENT_REPO_NAME = os.getenv(
+    "GSC_CONTENT_REPO_NAME",
+    f"{(os.getenv('BLOG_BRAND') or PROPERTY_HOST.replace('blog.', '').split('.', 1)[0]).strip().lower().replace('-', '_')}-blog",
+)
 HIGH_CLICK_THRESHOLD = 500       # URLs with >= this clicks in ANY period are
                                   # excluded from the candidates CSV
 CTR_THRESHOLD      = 0.01        # 1%  — lower bound for candidate CTR filter
@@ -116,19 +122,29 @@ PERIODS = [
 
 CSV_FOLDER = "csv"
 WEB_APP_URL = os.getenv(
-    "ASPOSE_WEB_APP_URL",
-    "https://script.google.com/macros/s/AKfycbxPC2s79zRyDM7Dldgrlcipa_vS5H_6NDiQyslLZZPeF70c6cEVPrQt-5zFZwimvQ7jDw/exec",
+    "GSC_WEB_APP_URL",
+    os.getenv(
+        "ASPOSE_WEB_APP_URL",
+        "https://script.google.com/macros/s/AKfycbxPC2s79zRyDM7Dldgrlcipa_vS5H_6NDiQyslLZZPeF70c6cEVPrQt-5zFZwimvQ7jDw/exec",
+    ),
 )
 SPREADSHEET_ID = os.getenv(
-    "ASPOSE_SPREADSHEET_ID",
-    "18sYeMy0pYD7-eJxBO674MCpsQy8ACCGnh9RefqPSW_A",
+    "GSC_SPREADSHEET_ID",
+    os.getenv(
+        "ASPOSE_SPREADSHEET_ID",
+        "18sYeMy0pYD7-eJxBO674MCpsQy8ACCGnh9RefqPSW_A",
+    ),
 )
-SHEET_NAME = "blog.aspose.com"
+SHEET_NAME = os.getenv("GSC_SHEET_NAME", "blog.aspose.com")
 UPLOAD_CHUNK_SIZE = 3000
 
 
 def derive_candidate_csv_stem(property_url: str) -> str:
     """Derive the candidate CSV stem from the blog property or override."""
+    exact_stem = os.getenv("GSC_CANDIDATE_FILE_STEM")
+    if exact_stem:
+        return exact_stem.strip().lower().replace(" ", "_")
+
     override = os.getenv("BLOG_BRAND")
     if override:
         return override.strip().lower().replace("-", "_").replace(" ", "_")
@@ -238,7 +254,7 @@ def fetch_period(webproperty, days_back: int, label: str) -> pd.DataFrame:
         df["ctr"] = df["clicks"] / df["impressions"].replace(0, 1)
 
     # Keep only the target property and English URLs
-    df = df[df["page"].str.contains("blog.aspose.com", na=False)]
+    df = df[df["page"].str.contains(PROPERTY_HOST, na=False)]
     df = df[~df["page"].apply(has_language_prefix)]
 
     return df[["page", "clicks", "impressions", "ctr", "position"]].copy()
@@ -550,7 +566,7 @@ def build_wide_table(period_dfs: dict) -> pd.DataFrame:
 def enrich_publish_age(df: pd.DataFrame) -> pd.DataFrame:
     """Add 'days_since_published' column via local content repo, if available."""
     content_root, days_map, parsed, matched, total, _ = select_best_days_since_map(
-        "aspose-blog", df["page"].tolist()
+        CONTENT_REPO_NAME, df["page"].tolist()
     )
     if content_root:
         print(f"  Content root: {content_root}")
@@ -571,7 +587,7 @@ def enrich_publish_age(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     print("=" * 70)
-    print("GSC Multi-Period Comparison Agent — blog.aspose.com")
+    print(f"GSC Multi-Period Comparison Agent — {PROPERTY_HOST}")
     print("=" * 70)
 
     # 1) Authenticate
