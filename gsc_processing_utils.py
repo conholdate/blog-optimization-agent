@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import pandas as pd
 import yaml
+from dateutil import parser as dateutil_parser
 
 
 # Common non-English prefixes used across blog URLs.
@@ -54,14 +55,34 @@ def parse_publish_date(value):
     if not text:
         return None
 
-    parsed = pd.to_datetime(text, errors="coerce", utc=True)
-    if pd.isna(parsed):
-        # Fallback for YAML-like "YYYY-MM-DD HH:MM:SS +0000 UTC"
-        cleaned = re.sub(r"\s+UTC$", "", text, flags=re.IGNORECASE)
-        parsed = pd.to_datetime(cleaned, errors="coerce", utc=True)
-        if pd.isna(parsed):
-            return None
-    return parsed.date()
+    candidates = [
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S %z",
+        "%a, %d %b %Y %H:%M:%S %z",
+        "%a, %d %b %Y %H:%M:%S GMT",
+        "%a, %d %b %Y %H:%M:%S %Z",
+        "%d %b %Y",
+        "%b %d, %Y",
+        "%m/%d/%Y",
+        "%Y/%m/%d",
+    ]
+
+    for fmt in candidates:
+        try:
+            dt = datetime.strptime(text, fmt)
+            return dt.date()
+        except ValueError:
+            continue
+
+    # Fallback for values such as "YYYY-MM-DD HH:MM:SS +0000 UTC" or other
+    # slightly non-standard front matter emitted by different blog repos.
+    cleaned = re.sub(r"\s+UTC$", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+GMT$", "", cleaned, flags=re.IGNORECASE)
+    try:
+        return dateutil_parser.parse(cleaned, dayfirst=False, fuzzy=False).date()
+    except (ValueError, TypeError, OverflowError):
+        return None
 
 
 def build_days_since_map(content_root: Path):
