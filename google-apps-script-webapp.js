@@ -1,7 +1,7 @@
 // Google Apps Script Web App
-// Supports payload rows with:
-// page, clicks, impressions, ctr, position, days_since_published (or "Days Since Published")
-// Enforces CTR range 1%..4% and sorts by Days Since Published descending.
+// Supports generic CSV payload rows.
+
+const DEFAULT_SHEET_NAME = "blog.aspose.com";
 
 function doPost(e) {
   try {
@@ -26,18 +26,11 @@ function doGet() {
     endpoint: "POST with action: import_data",
     parameters: {
       spreadsheetId: "Google Sheet ID",
+      sheetName: "Target sheet name (optional)",
       rows: "Array of row objects",
       clearExisting: "true/false (optional, default: true)"
     },
-    expected_row_fields: [
-      "page",
-      "clicks",
-      "impressions",
-      "ctr",
-      "position",
-      "days_since_published (or 'Days Since Published')"
-    ],
-    ctr_range: "0.01 <= ctr <= 0.04"
+    expected_row_fields: "Any CSV columns present in the uploaded rows"
   });
 }
 
@@ -54,6 +47,85 @@ function extractDomainFromData(rows) {
   return "blog.conholdate.com";
 }
 
+function resolveSheetName(data, rows) {
+  const explicitSheetName = data && typeof data.sheetName === "string" ? data.sheetName.trim() : "";
+  if (explicitSheetName) {
+    return explicitSheetName;
+  }
+
+  const inferredSheetName = extractDomainFromData(rows);
+  if (inferredSheetName) {
+    return inferredSheetName;
+  }
+
+  return DEFAULT_SHEET_NAME;
+}
+
+function trimTrailingBlanks(values) {
+  const out = values.slice();
+  while (out.length > 0 && String(out[out.length - 1] || "").trim() === "") {
+    out.pop();
+  }
+  return out;
+}
+
+function getIncomingHeaders(rows) {
+  if (!rows || rows.length === 0 || typeof rows[0] !== "object" || rows[0] === null) {
+    return [];
+  }
+  return Object.keys(rows[0]);
+}
+
+function normalizeCellValue(value) {
+  if (value === undefined || value === null) return "";
+  if (value instanceof Date) return value;
+  if (typeof value === "number" && !isFinite(value)) return "";
+  return value;
+}
+
+function ensureSheetWidth(sheet, width) {
+  const current = sheet.getMaxColumns();
+  if (current < width) {
+    sheet.insertColumnsAfter(current, width - current);
+  }
+}
+
+function writeHeaderRow(sheet, headers) {
+  ensureSheetWidth(sheet, headers.length);
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setFontWeight("bold");
+  headerRange.setBackground("#1a73e8");
+  headerRange.setFontColor("#ffffff");
+  headerRange.setHorizontalAlignment("center");
+  sheet.setFrozenRows(1);
+}
+
+function resolveHeaders(sheet, rows) {
+  const existing = trimTrailingBlanks(
+    sheet.getLastColumn() > 0
+      ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+      : []
+  );
+  const incoming = getIncomingHeaders(rows);
+
+  if (existing.length === 0) {
+    return incoming;
+  }
+
+  const headers = existing.slice();
+  for (const header of incoming) {
+    if (!headers.includes(header)) {
+      headers.push(header);
+    }
+  }
+  return headers;
+}
+
+function buildSheetData(rows, headers) {
+  return rows.map(row => headers.map(header => normalizeCellValue(row[header])));
+}
+
 function toBoolean(value, defaultValue) {
   if (value === undefined || value === null) return defaultValue;
   if (typeof value === "boolean") return value;
@@ -64,126 +136,54 @@ function toBoolean(value, defaultValue) {
 function handleImportData(data) {
   try {
     const { spreadsheetId, rows } = data;
-    const clearExisting = toBoolean(data.clearExisting, true);
 
     if (!spreadsheetId) return createResponse(false, "Missing spreadsheetId");
     if (!rows || !Array.isArray(rows)) return createResponse(false, "Missing or invalid rows data");
+    if (rows.length === 0) {
+      return createResponse(true, {
+        message: "No rows to import",
+        rows_imported: 0,
+        total_rows_in_sheet: 0,
+        sheet_name: resolveSheetName(data, rows),
+        spreadsheet_url: SpreadsheetApp.openById(spreadsheetId).getUrl(),
+        clear_existing: true
+      });
+    }
 
-    const domain = extractDomainFromData(rows);
+    const sheetName = resolveSheetName(data, rows);
     const ss = SpreadsheetApp.openById(spreadsheetId);
-
-    let sheet = ss.getSheetByName(domain);
+    let sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
-      sheet = ss.insertSheet(domain);
-      setupSheet(sheet);
-    } else {
-      ensureHeaders(sheet);
+      sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     }
 
-    // Clear existing data rows (A:F) if requested.
-    if (clearExisting && sheet.getLastRow() > 1) {
-      sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).clearContent();
+    const headers = resolveHeaders(sheet, rows);
+
+    writeHeaderRow(sheet, headers);
+
+    if (sheet.getLastRow() > 1) {
+      ensureSheetWidth(sheet, headers.length);
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).clearContent();
     }
 
-    const startRow = clearExisting ? 2 : (sheet.getLastRow() > 1 ? sheet.getLastRow() + 1 : 2);
-
-    // Build rows + enforce CTR range: 1% <= CTR <= 4%
-    const sheetData = [];
-    for (const row of rows) {
-      const ctr = Number(row.ctr || 0);
-      if (isNaN(ctr) || ctr < 0.01 || ctr > 0.04) {
-        continue;
-      }
-
-      const daysValue =
-        row.days_since_published !== undefined && row.days_since_published !== null
-          ? row.days_since_published
-          : row["Days Since Published"];
-
-      sheetData.push([
-        String(row.page || ""),
-        Number(row.clicks || 0),
-        Number(row.impressions || 0),
-        ctr,
-        Number(row.position || 0),
-        daysValue === undefined || daysValue === null || daysValue === "" ? "" : Number(daysValue)
-      ]);
-    }
-
+    const sheetData = buildSheetData(rows, headers);
     if (sheetData.length > 0) {
-      // Write A:F
-      sheet.getRange(startRow, 1, sheetData.length, 6).setValues(sheetData);
-
-      // Format numeric columns
-      sheet.getRange(startRow, 2, sheetData.length, 1).setNumberFormat("#,##0");
-      sheet.getRange(startRow, 3, sheetData.length, 1).setNumberFormat("#,##0");
-      sheet.getRange(startRow, 4, sheetData.length, 1).setNumberFormat("0.00%");
-      sheet.getRange(startRow, 5, sheetData.length, 1).setNumberFormat("0.00");
-      sheet.getRange(startRow, 6, sheetData.length, 1).setNumberFormat("0");
-
-      // Sort by Days Since Published DESC (largest first)
-      if (clearExisting) {
-        const totalRows = sheet.getLastRow() - 1;
-        if (totalRows > 1) {
-          sheet.getRange(2, 1, totalRows, 6).sort({ column: 6, ascending: false });
-        }
-      }
+      sheet.getRange(2, 1, sheetData.length, headers.length).setValues(sheetData);
     }
 
     const totalRowsInSheet = Math.max(sheet.getLastRow() - 1, 0);
     return createResponse(true, {
-      message: `Imported ${sheetData.length} rows to ${domain}`,
+      message: `Imported ${sheetData.length} rows to ${sheetName}`,
       rows_imported: sheetData.length,
       total_rows_in_sheet: totalRowsInSheet,
-      sheet_name: domain,
+      sheet_name: sheetName,
       spreadsheet_url: ss.getUrl(),
-      clear_existing: clearExisting
+      clear_existing: true
     });
   } catch (error) {
     console.error("Import error:", error);
     return createResponse(false, "Import failed: " + error.message);
   }
-}
-
-function setupSheet(sheet) {
-  sheet.clear();
-  const headers = [[
-    "Page",
-    "Clicks",
-    "Impressions",
-    "CTR",
-    "Position",
-    "Days Since Published"
-  ]];
-  sheet.getRange(1, 1, 1, 6).setValues(headers);
-
-  const headerRange = sheet.getRange(1, 1, 1, 6);
-  headerRange.setFontWeight("bold");
-  headerRange.setBackground("#1a73e8");
-  headerRange.setFontColor("#ffffff");
-  headerRange.setHorizontalAlignment("center");
-
-  sheet.setColumnWidth(1, 500);
-  sheet.setColumnWidth(2, 90);
-  sheet.setColumnWidth(3, 110);
-  sheet.setColumnWidth(4, 80);
-  sheet.setColumnWidth(5, 90);
-  sheet.setColumnWidth(6, 150);
-  sheet.setFrozenRows(1);
-}
-
-function ensureHeaders(sheet) {
-  const expected = [
-    "Page",
-    "Clicks",
-    "Impressions",
-    "CTR",
-    "Position",
-    "Days Since Published"
-  ];
-  const current = sheet.getRange(1, 1, 1, 6).getValues()[0];
-  const mismatch = expected.some((h, i) => String(current[i] || "").trim() !== h);
-  if (mismatch) setupSheet(sheet);
 }
 
 function createResponse(success, data) {
