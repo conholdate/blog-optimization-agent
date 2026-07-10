@@ -53,6 +53,8 @@ jobs:
             path: aspose-blog
             default_branch: master
             csv_file: csv/aspose.csv
+            web_app_secret: ASPOSE_WEB_APP_URL
+            spreadsheet_secret: ASPOSE_SPREADSHEET_ID
           - name: blog.aspose.cloud
             input_key: run_aspose_cloud
             script: gsc_aspose_cloud.py
@@ -60,6 +62,8 @@ jobs:
             path: aspose-cloud-blog
             default_branch: master
             csv_file: csv/aspose-cloud.csv
+            web_app_secret: ASPOSE_CLOUD_WEB_APP_URL
+            spreadsheet_secret: ASPOSE_CLOUD_SPREADSHEET_ID
           - name: blog.conholdate.com
             input_key: run_conholdate_com
             script: gsc_conholdate_com.py
@@ -67,6 +71,8 @@ jobs:
             path: conholdate-blog
             default_branch: main
             csv_file: csv/conholdate.csv
+            web_app_secret: CONHOLDATE_WEB_APP_URL
+            spreadsheet_secret: CONHOLDATE_SPREADSHEET_ID
           - name: blog.conholdate.cloud
             input_key: run_conholdate_cloud
             script: gsc_conholdate_cloud.py
@@ -74,6 +80,8 @@ jobs:
             path: blog.conholdate.cloud
             default_branch: main
             csv_file: csv/conholdate-cloud.csv
+            web_app_secret: CONHOLDATE_CLOUD_WEB_APP_URL
+            spreadsheet_secret: CONHOLDATE_CLOUD_SPREADSHEET_ID
           - name: blog.groupdocs.com
             input_key: run_groupdocs_com
             script: gsc_groupdocs_com.py
@@ -81,6 +89,8 @@ jobs:
             path: groupdocs-blog
             default_branch: master
             csv_file: csv/groupdocs.csv
+            web_app_secret: GROUPDOCS_WEB_APP_URL
+            spreadsheet_secret: GROUPDOCS_SPREADSHEET_ID
           - name: blog.groupdocs.cloud
             input_key: run_groupdocs_cloud
             script: gsc_groupdocs_cloud.py
@@ -88,6 +98,8 @@ jobs:
             path: groupdocs-cloud-blog
             default_branch: master
             csv_file: csv/groupdocs-cloud.csv
+            web_app_secret: GROUPDOCS_CLOUD_WEB_APP_URL
+            spreadsheet_secret: GROUPDOCS_CLOUD_SPREADSHEET_ID
 
     # NOTE: no job-level `if:` here — the `matrix` context is not available
     # at jobs.<job_id>.if. Instead, the first step below computes a
@@ -169,6 +181,8 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         env:
           BLOG_CONTENT_ROOT: ${{ github.workspace }}/${{ matrix.path }}
+          GSC_WEB_APP_URL: ${{ secrets[matrix.web_app_secret] }}
+          GSC_SPREADSHEET_ID: ${{ secrets[matrix.spreadsheet_secret] }}
         run: python ${{ matrix.script }}
 
       - name: Verify Days Since Published in CSV
