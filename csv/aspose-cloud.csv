@@ -1,68 +1,16 @@
-page,clicks,impressions,ctr,position,Days Since Published
-https://blog.aspose.cloud/total/easily-convert-your-email-files-into-wordpress-posts-using-aspose-cloud-email-to-post-plugin/,3,175,0.017142857142857144,7.285714285714286,4122.0
-https://blog.aspose.cloud/total/node.js-cloud-sdk-to-extract-ocr-or-hocr-text-from-images-using-powerful-aspose.ocr-cloud-apis/,1,29,0.034482758620689655,10.344827586206897,3778.0
-https://blog.aspose.cloud/total/vb.net-examples-added-in-aspose-.net-cloud-sdks-for-all-aspose-cloud-apis/,1,89,0.011235955056179775,21.471910112359552,3738.0
-https://blog.aspose.cloud/omr/support-of-pdf-barcodes-and-qr-codes-in-template-generation-with-aspose.omr-cloud-18.6/,1,54,0.018518518518518517,13.925925925925926,2924.0
-https://blog.aspose.cloud/ocr/improved-text-recognition-module-and-released-skew-correction-module-in-aspose.ocr-cloud-18.6/,1,26,0.038461538461538464,10.846153846153847,2912.0
-https://blog.aspose.cloud/pdf/convert-scanned-pdfs-to-searchable-pdf-using-curl/,1,71,0.014084507042253521,19.690140845070424,2457.0
-https://blog.aspose.cloud/pdf/insert-checkbox-and-radio-button-in-pdf-with-aspose-pdf-cloud-19-10/,3,276,0.010869565217391304,8.978260869565219,2424.0
-https://blog.aspose.cloud/3d/convert-fbx-to-pdf-with-aspose-3d-cloud-api/,3,253,0.011857707509881422,11.09486166007905,2335.0
-https://blog.aspose.cloud/words/split-doc-docx-word-documents-csharp/,4,262,0.015267175572519083,20.137404580152673,2255.0
-https://blog.aspose.cloud/words/export-wordpress-posts-to-msword-documents/,73,2984,0.024463806970509382,8.566689008042896,2186.0
-https://blog.aspose.cloud/words/free-wordpress-export-plugin-custom-fields-custom-summarys-rendering-to-docx-odt-rtf-txt/,1,29,0.034482758620689655,13.931034482758621,2085.0
-https://blog.aspose.cloud/cad/rest-api-to-convert-flip-or-rotate-autocad-dwg-dxf-dwf-files/,5,486,0.0102880658436214,12.302469135802468,2025.0
-https://blog.aspose.cloud/pdf/add-update-textbox-checkbox-radiobutton-combobox-fields-using-java-rest-api/,3,258,0.011627906976744186,14.337209302325581,1976.0
-https://blog.aspose.cloud/total/how-to-obtain-jwt-token-using-a-client-id-and-client-secret-key/,2,114,0.017543859649122806,12.903508771929825,1959.0
-https://blog.aspose.cloud/pdf/online-pdf-ocr-convert-scanned-pdf-to-searchable-pdf-using-java-rest-api/,1,99,0.010101010101010102,18.03030303030303,1859.0
-https://blog.aspose.cloud/pdf/pdf-to-html-convert-pdf-to-hml-in-csharp/,1,84,0.011904761904761904,38.07142857142857,1780.0
-https://blog.aspose.cloud/tasks/convert-mpp-to-oracle-primavera-p6-xer-in-csharp/,7,493,0.014198782961460446,25.002028397565923,1762.0
-https://blog.aspose.cloud/tasks/convert-mpp-to-xml-in-csharp/,9,326,0.027607361963190184,11.438650306748466,1738.0
-https://blog.aspose.cloud/email/convert-eml-to-msg-in-csharp/,6,318,0.018867924528301886,15.135220125786164,1715.0
-https://blog.aspose.cloud/cad/convert-stl-to-bmp-in-csharp/,1,54,0.018518518518518517,17.09259259259259,1704.0
-https://blog.aspose.cloud/words/convert-word-to-jpeg-in-python/,2,143,0.013986013986013986,16.825174825174827,1691.0
-https://blog.aspose.cloud/pdf/convert-pdf-to-mobixml-using-python/,2,184,0.010869565217391304,10.13586956521739,1626.0
-https://blog.aspose.cloud/pdf/create-jpg-to-word-converter-using-python-sdk/,5,265,0.018867924528301886,13.241509433962264,1535.0
-https://blog.aspose.cloud/html/convert-html-to-word-in-csharp/,2,185,0.010810810810810811,21.745945945945945,1414.0
-https://blog.aspose.cloud/cells/convert-excel-to-powerpoint-in-java/,2,122,0.01639344262295082,27.83606557377049,1387.0
-https://blog.aspose.cloud/imaging/find-duplicate-images-using-java/,6,373,0.0160857908847185,13.35656836461126,1351.0
-https://blog.aspose.cloud/imaging/convert-jpg-to-webp-in-java/,28,1366,0.020497803806734993,10.320644216691068,1306.0
-https://blog.aspose.cloud/cells/convert-csv-to-json-using-csharp/,5,497,0.01006036217303823,12.766599597585513,1215.0
-https://blog.aspose.cloud/cells/convert-excel-to-txt-in-csharp/,5,416,0.01201923076923077,36.23798076923077,1212.0
-https://blog.aspose.cloud/cells/sign-excel-using-csharp/,2,91,0.02197802197802198,14.274725274725276,1202.0
-https://blog.aspose.cloud/cells/unprotect-excel-using-csharp/,25,1450,0.017241379310344827,8.970344827586207,1197.0
-https://blog.aspose.cloud/cells/compress-excel-in-csharp/,3,224,0.013392857142857142,8.013392857142858,1191.0
-https://blog.aspose.cloud/slides/convert-html-to-ppt-in-csharp/,14,1315,0.01064638783269962,25.138403041825097,1149.0
-https://blog.aspose.cloud/slides/split-powerpoint-using-csharp/,2,200,0.01,20.585,1148.0
-https://blog.aspose.cloud/pdf/convert-html-to-markdown-using-dotnet-rest-api/,1,78,0.01282051282051282,18.846153846153847,1044.0
-https://blog.aspose.cloud/words/convert-odt-to-word-with-dotnet-rest-api/,4,177,0.022598870056497175,20.581920903954803,1014.0
-https://blog.aspose.cloud/tasks/convert-mpp-to-xml-with-dotnet-rest-api/,10,706,0.014164305949008499,8.592067988668555,973.0
-https://blog.aspose.cloud/cells/convert-json-to-csv-with-dotnet-cloud-sdk/,4,299,0.013377926421404682,12.789297658862877,917.0
-https://blog.aspose.cloud/cells/convert-json-to-html-with-dotnet-cloud-sdk/,2,80,0.025,11.45,915.0
-https://blog.aspose.cloud/cells/convert-json-to-pdf-with-rest-api/,4,212,0.018867924528301886,10.61320754716981,902.0
-https://blog.aspose.cloud/imaging/convert-psd-to-pdf-in-csharp/,1,74,0.013513513513513514,23.81081081081081,848.0
-https://blog.aspose.cloud/imaging/convert-jpeg2000-to-jpg-in-csharp/,8,393,0.020356234096692113,16.463104325699746,839.0
-https://blog.aspose.cloud/cells/convert-json-to-xml-in-csharp/,2,60,0.03333333333333333,16.266666666666666,775.0
-https://blog.aspose.cloud/cells/convert-xml-to-json-in-csharp/,6,541,0.011090573012939002,15.236598890942698,768.0
-https://blog.aspose.cloud/3d/obj-to-stl-in-csharp/,1,59,0.01694915254237288,7.220338983050848,645.0
-https://blog.aspose.cloud/3d/convert-3ds-to-stl-in-csharp/,2,117,0.017094017094017096,14.0,642.0
-https://blog.aspose.cloud/3d/glb-to-fbx-in-java/,64,6170,0.010372771474878443,10.323662884927067,630.0
-https://blog.aspose.cloud/3d/fbx-to-obj-in-java/,2,115,0.017391304347826087,6.269565217391304,628.0
-https://blog.aspose.cloud/cells/xml-to-json-in-java/,1,57,0.017543859649122806,26.087719298245613,546.0
-https://blog.aspose.cloud/tasks/convert-mpp-to-html-nodejs/,5,304,0.01644736842105263,7.118421052631579,420.0
-https://blog.aspose.cloud/words/convert-word-to-odt-in-nodejs/,2,198,0.010101010101010102,8.55050505050505,406.0
-https://blog.aspose.cloud/cells/convert-json-to-html-in-nodejs/,3,144,0.020833333333333332,13.76388888888889,386.0
-https://blog.aspose.cloud/cells/sign-excel-using-nodejs/,1,79,0.012658227848101266,26.848101265822784,365.0
-https://blog.aspose.cloud/html/convert-html-to-word-using-csharp/,1,92,0.010869565217391304,14.423913043478262,334.0
-https://blog.aspose.cloud/imaging/convert-png-to-jpg-in-csharp/,6,569,0.01054481546572935,10.45518453427065,302.0
-https://blog.aspose.cloud/ocr/find-font-from-image-in-csharp/,1,84,0.011904761904761904,17.61904761904762,244.0
-https://blog.aspose.cloud/tasks/convert-mpp-to-html-dotnet/,3,254,0.011811023622047244,10.452755905511811,217.0
-https://blog.aspose.cloud/slides/extract-text-from-pptx-in-csharp/,5,292,0.017123287671232876,11.506849315068493,180.0
-https://blog.aspose.cloud/tasks/convert-mpp-to-pdf-in-csharp/,1,48,0.020833333333333332,29.958333333333332,173.0
-https://blog.aspose.cloud/email/create-eml-file-in-python-programmatically/,4,157,0.025477707006369428,8.210191082802549,83.0
-https://blog.aspose.cloud/email/convert-eml-to-msg-in-python/,2,187,0.0106951871657754,7.566844919786096,78.0
-https://blog.aspose.cloud/,5,398,0.01256281407035176,20.934673366834172,
-https://blog.aspose.cloud/ka/barcode/generate-barcode-in-jpg-dotnet-rest-api/,2,69,0.028985507246376812,6.768115942028985,
-https://blog.aspose.cloud/ka/imaging/merge-jpeg-images-online-free-api-to-merge-images-in-csharp/,2,106,0.018867924528301886,7.584905660377358,
-https://blog.aspose.cloud/ka/imaging/resize-tiff-frame-in-java/,1,38,0.02631578947368421,8.81578947368421,
-https://blog.aspose.cloud/ka/pdf/extract-text-from-pdf-in-java/,1,28,0.03571428571428571,8.714285714285715,
-https://blog.aspose.cloud/ka/words/compare-word-documents-online-in-java/,1,28,0.03571428571428571,6.607142857142857,
+page,clicks_3m,impressions_3m,ctr_3m,position_3m,clicks_6m,impressions_6m,ctr_6m,position_6m,clicks_12m,impressions_12m,ctr_12m,position_12m,trend_pattern,max_clicks_any_period,high_click_url,min_position_any_period,position_ok,days_since_published,Recommended Action Reason,Recommended Action
+https://blog.aspose.cloud/total/vb.net-examples-added-in-aspose-.net-cloud-sdks-for-all-aspose-cloud-apis/,0.0,56.0,0.0,22.642857142857142,0.0,92.0,0.0,22.608695652173914,2,135,0.014814814814814815,20.444444444444443,volatile,2.0,False,20.444444444444443,True,3752.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.aspose.cloud/imaging/convert-image-to-grayscale/,3.0,280.0,0.010714285714285714,17.62857142857143,4.0,502.0,0.00796812749003984,16.264940239043824,11,1012,0.010869565217391304,23.600790513833992,volatile,11.0,False,16.264940239043824,True,2316.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/words/split-doc-docx-word-documents-csharp/,0.0,37.0,0.0,20.324324324324323,4.0,254.0,0.015748031496062992,20.35433070866142,6,435,0.013793103448275862,22.760919540229885,volatile,6.0,False,20.324324324324323,True,2269.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.aspose.cloud/cells/convert-xlsb-to-jpg-in-csharp/,0.0,49.0,0.0,19.632653061224488,0.0,84.0,0.0,17.345238095238095,2,152,0.013157894736842105,16.986842105263158,volatile,2.0,False,16.986842105263158,True,1738.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/imaging/get-tiff-frame-in-java/,2.0,135.0,0.014814814814814815,18.85925925925926,4.0,339.0,0.011799410029498525,19.421828908554573,13,800,0.01625,17.93875,volatile,13.0,False,17.93875,True,1343.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/cells/convert-ods-to-excel-in-csharp/,0.0,13.0,0.0,45.38461538461539,0.0,30.0,0.0,24.233333333333334,1,75,0.013333333333333334,25.14666666666667,volatile,1.0,False,24.233333333333334,True,1224.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.aspose.cloud/cells/sign-excel-using-csharp/,0.0,41.0,0.0,19.658536585365855,1.0,89.0,0.011235955056179775,15.314606741573034,3,287,0.010452961672473868,24.627177700348433,volatile,3.0,False,15.314606741573034,True,1216.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/cells/set-excel-watermark-csharp/,0.0,119.0,0.0,22.714285714285715,2.0,289.0,0.006920415224913495,18.782006920415224,7,545,0.012844036697247707,26.357798165137616,declining,7.0,False,18.782006920415224,True,1209.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/words/convert-odt-to-word-with-dotnet-rest-api/,0.0,76.0,0.0,15.473684210526315,0.0,171.0,0.0,21.304093567251464,5,342,0.014619883040935672,26.67543859649123,volatile,5.0,False,15.473684210526315,True,1028.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/words/convert-epub-to-jpg-with-dotnet-rest-api/,0.0,3.0,0.0,52.0,0.0,77.0,0.0,27.194805194805195,3,141,0.02127659574468085,29.24113475177305,volatile,3.0,False,27.194805194805195,True,978.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.aspose.cloud/imaging/convert-jpeg2000-to-jpg-in-csharp/,2.0,191.0,0.010471204188481676,18.340314136125656,5.0,386.0,0.012953367875647668,16.73316062176166,13,1106,0.011754068716094032,22.069620253164558,volatile,13.0,False,16.73316062176166,True,853.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/cells/convert-json-to-html-in-nodejs/,1.0,71.0,0.014084507042253521,20.704225352112676,3.0,170.0,0.01764705882352941,15.570588235294117,3,180,0.016666666666666666,15.161111111111111,volatile,3.0,False,15.161111111111111,True,400.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/cells/add-watermark-in-excel-csharp/,0.0,77.0,0.0,19.01298701298701,0.0,95.0,0.0,17.08421052631579,4,198,0.020202020202020204,23.71212121212121,volatile,4.0,False,17.08421052631579,True,257.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/tasks/convert-mpp-to-pdf-in-csharp/,0.0,10.0,0.0,18.3,1.0,46.0,0.021739130434782608,29.717391304347824,1,48,0.020833333333333332,29.958333333333332,volatile,1.0,False,18.3,True,187.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.aspose.cloud/total/working-with-project-documents-task-links-outline-codes-and-extended-attributes-in-microsoft-project%C2%AE-using-aspose-cloud-sdk-for-.net/,0.0,27.0,0.0,21.62962962962963,0.0,37.0,0.0,18.35135135135135,1,53,0.018867924528301886,18.88679245283019,volatile,1.0,False,18.35135135135135,True,,borderline second-page ranking with unstable trend,TITLE_META
