@@ -1,1 +1,2 @@
-page,clicks,impressions,ctr,position,Days Since Published
+page,clicks_3m,impressions_3m,ctr_3m,position_3m,clicks_6m,impressions_6m,ctr_6m,position_6m,clicks_12m,impressions_12m,ctr_12m,position_12m,trend_pattern,max_clicks_any_period,high_click_url,min_position_any_period,position_ok,days_since_published,Recommended Action Reason,Recommended Action
+https://blog.conholdate.cloud/total/manipulate-excel-spreadsheets/,,,,,0,62,0.0,34.306451612903224,2,135,0.014814814814814815,44.53333333333333,declining,2.0,False,34.306451612903224,True,366.0,ranking is deep in search results,FULL_REFRESH
