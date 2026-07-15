@@ -1,76 +1,50 @@
-page,clicks,impressions,ctr,position,Days Since Published
-https://blog.groupdocs.com/parser/extract-data-from-invoices-or-receipts-in-csharp/,4,200,0.02,22.505,2442.0
-https://blog.groupdocs.com/parser/extract-data-from-database-files-using-csharp/,2,112,0.017857142857142856,13.839285714285714,2427.0
-https://blog.groupdocs.com/conversion/convert-doc-docx-to-html-in-csharp-and-show-or-hide-page-borders/,2,191,0.010471204188481676,22.42931937172775,2254.0
-https://blog.groupdocs.com/comparison/groupdocs-comparison-for-net-c-sharp-diff-library-for-comparing-text-files/,22,1122,0.0196078431372549,11.998217468805704,2253.0
-https://blog.groupdocs.com/metadata/manage-exif-data-in-csharp-net-for-jpeg-png-tiff-webp-images/,56,2914,0.019217570350034317,8.759780370624572,2240.0
-https://blog.groupdocs.com/merger/insert-ole-objects-in-word-excel-powerpoint-with-csharp/,15,867,0.01730103806228374,12.854671280276817,2237.0
-https://blog.groupdocs.com/conversion/convert-webp-to-jpg-png-tiff-and-pdf-in-csharp/,14,672,0.020833333333333332,12.383928571428571,2192.0
-https://blog.groupdocs.com/merger/merge-pdf-word-excel-ppt-files-in-csharp/,7,591,0.011844331641285956,19.240270727580373,2142.0
-https://blog.groupdocs.com/conversion/convert-cad-drawings-to-pdf-in-csharp/,2,77,0.025974025974025976,15.415584415584416,2061.0
-https://blog.groupdocs.com/watermark/add-watermark-to-images-using-csharp-dotnet/,2,194,0.010309278350515464,17.835051546391753,2019.0
-https://blog.groupdocs.com/metadata/remove-metadata-of-documents-and-images-using-csharp/,17,1000,0.017,10.1,2010.0
-https://blog.groupdocs.com/comparison/compare-images-in-csharp-dotnet/,4,322,0.012422360248447204,14.496894409937887,2002.0
-https://blog.groupdocs.com/parser/extract-images-from-ebooks-in-csharp/,3,244,0.012295081967213115,10.299180327868852,1951.0
-https://blog.groupdocs.com/viewer/play-pause-animated-gif-and-apng-in-web-pages-using-csharp/,4,394,0.01015228426395939,9.758883248730964,1949.0
-https://blog.groupdocs.com/parser/extract-images-from-ebooks-in-java/,2,199,0.010050251256281407,15.316582914572864,1934.0
-https://blog.groupdocs.com/viewer/view-cad-documents-using-csharp/,18,1714,0.010501750291715286,11.50583430571762,1891.0
-https://blog.groupdocs.com/search/build-your-full-text-search-solution-in-csharp/,22,1512,0.01455026455026455,11.513227513227513,1854.0
-https://blog.groupdocs.com/comparison/compare-images-in-java/,11,781,0.014084507042253521,11.752880921895006,1841.0
-https://blog.groupdocs.com/metadata/manage-xmp-and-exif-data-of-heif-heic-images-using-csharp/,24,1468,0.01634877384196185,9.5933242506812,1810.0
-https://blog.groupdocs.com/parser/extract-zip-files-data-in-csharp/,10,629,0.01589825119236884,12.736089030206678,1771.0
-https://blog.groupdocs.com/search/find-synonyms-of-words-using-csharp/,9,402,0.022388059701492536,8.196517412935323,1751.0
-https://blog.groupdocs.com/annotation/create-hyperlinks-in-pdf-using-annotations-in-csharp/,2,92,0.021739130434782608,14.065217391304348,1719.0
-https://blog.groupdocs.com/classification/taxonomic-classification-of-text-using-csharp/,2,58,0.034482758620689655,12.344827586206897,1704.0
-https://blog.groupdocs.com/editor/edit-xml-files-using-csharp/,8,613,0.013050570962479609,30.042414355628058,1702.0
-https://blog.groupdocs.com/merger/password-protect-word-documents-using-csharp/,3,207,0.014492753623188406,27.36231884057971,1677.0
-https://blog.groupdocs.com/comparison/compare-word-documents-using-csharp/,4,168,0.023809523809523808,15.839285714285714,1673.0
-https://blog.groupdocs.com/viewer/stl-file-viewer-using-csharp/,11,463,0.023758099352051837,8.706263498920087,1646.0
-https://blog.groupdocs.com/metadata/read-mp3-tags-using-csharp/,34,1610,0.02111801242236025,12.075155279503106,1621.0
-https://blog.groupdocs.com/merger/move-word-pages-using-csharp/,4,316,0.012658227848101266,14.835443037974683,1607.0
-https://blog.groupdocs.com/editor/edit-excel-files-in-csharp/,3,179,0.01675977653631285,17.59776536312849,1606.0
-https://blog.groupdocs.com/conversion/convert-cad-drawings-to-pdf-in-java/,5,268,0.018656716417910446,16.440298507462686,1604.0
-https://blog.groupdocs.com/metadata/read-mp3-tags-in-java/,17,764,0.02225130890052356,12.704188481675393,1600.0
-https://blog.groupdocs.com/editor/edit-excel-files-in-java/,3,174,0.017241379310344827,16.316091954022987,1552.0
-https://blog.groupdocs.com/merger/change-page-orientation-of-a-word-document-in-csharp/,3,127,0.023622047244094488,10.89763779527559,1543.0
-https://blog.groupdocs.com/conversion/convert-svg-to-png-in-java/,4,317,0.012618296529968454,10.116719242902208,1444.0
-https://blog.groupdocs.com/conversion/convert-svg-to-jpg-in-java/,1,77,0.012987012987012988,18.194805194805195,1428.0
-https://blog.groupdocs.com/conversion/convert-svg-to-png-using-csharp/,15,1201,0.012489592006661115,9.925895087427143,1412.0
-https://blog.groupdocs.com/viewer/json-viewer-using-csharp/,3,103,0.02912621359223301,9.359223300970873,1379.0
-https://blog.groupdocs.com/viewer/render-json-as-pdf-jpg-png-html-using-csharp/,7,693,0.010101010101010102,10.727272727272727,1373.0
-https://blog.groupdocs.com/viewer/render-json-as-pdf-jpg-png-html-using-java/,9,787,0.011435832274459974,13.003811944091487,1366.0
-https://blog.groupdocs.com/conversion/convert-markdown-to-pdf-in-java/,13,392,0.03316326530612245,11.334183673469388,1360.0
-https://blog.groupdocs.com/parser/extract-text-from-markdown-files-using-csharp/,3,216,0.013888888888888888,15.412037037037036,1352.0
-https://blog.groupdocs.com/parser/convert-word-to-markdown-using-csharp/,6,179,0.0335195530726257,24.910614525139664,1345.0
-https://blog.groupdocs.com/merger/merge-powerpoint-ppt-pptx-slides-using-csharp/,7,438,0.01598173515981735,11.673515981735159,1335.0
-https://blog.groupdocs.com/viewer/xml-viewer-online/,148,14545,0.010175317978686834,15.284840151254727,1223.0
-https://blog.groupdocs.com/viewer/cad-viewer-online/,545,50141,0.010869348437406513,14.605751779980455,1219.0
-https://blog.groupdocs.com/viewer/xml-viewer-using-csharp/,4,146,0.0273972602739726,25.054794520547944,1197.0
-https://blog.groupdocs.com/merger/merge-word-files-using-csharp/,5,429,0.011655011655011656,19.216783216783217,1127.0
-https://blog.groupdocs.com/merger/merge-excel-files-online/,257,11929,0.02154413613882136,7.229021711794786,1120.0
-https://blog.groupdocs.com/merger/merge-word-files-online/,1177,42101,0.027956580603786134,14.147929977910264,1118.0
-https://blog.groupdocs.com/merger/merge-powerpoint-ppt-pptx-files-online/,2124,62718,0.033865875825121974,8.416547083771803,1113.0
-https://blog.groupdocs.com/merger/merge-to-pdf-online/,6,507,0.011834319526627219,25.28994082840237,1107.0
-https://blog.groupdocs.com/merger/password-protect-word-document-online/,10,856,0.011682242990654205,25.62967289719626,1093.0
-https://blog.groupdocs.com/merger/unlock-word-documents-online/,67,2132,0.03142589118198874,11.7406191369606,1076.0
-https://blog.groupdocs.com/merger/lock-unlock-excel-files-with-password-using-java/,5,334,0.014970059880239521,11.874251497005988,1058.0
-https://blog.groupdocs.com/editor/edit-presentation-ppt-pptx/,94,6148,0.015289525048796356,22.318640208197788,1007.0
-https://blog.groupdocs.com/editor/edit-ppt-pptx-presentations-in-java/,2,83,0.024096385542168676,10.686746987951807,999.0
-https://blog.groupdocs.com/metadata/view-edit-mp3-tags/,46,2754,0.01670297748729121,18.701888162672475,994.0
-https://blog.groupdocs.com/metadata/view-edit-png-metadata/,71,4899,0.014492753623188406,8.686670749132476,992.0
-https://blog.groupdocs.com/metadata/view-edit-epub-metadata/,281,9724,0.028897573015220075,10.947552447552448,987.0
-https://blog.groupdocs.com/metadata/view-edit-epub-metadata-using-csharp/,9,646,0.01393188854489164,21.893188854489164,985.0
-https://blog.groupdocs.com/metadata/manage-epub-metadata-using-java/,4,388,0.010309278350515464,24.664948453608247,981.0
-https://blog.groupdocs.com/search/search-multiple-texts-in-files-across-folders-in-csharp/,17,934,0.018201284796573874,13.958244111349037,955.0
-https://blog.groupdocs.com/search/online-regex-search/,5,391,0.01278772378516624,12.969309462915602,946.0
-https://blog.groupdocs.com/signature/generate-barcode-online/,8,345,0.02318840579710145,8.257971014492753,924.0
-https://blog.groupdocs.com/conversion/convert-json-to-xml-in-csharp/,11,444,0.024774774774774775,7.9324324324324325,776.0
-https://blog.groupdocs.com/merger/merge-and-split-epub-using-csharp/,2,181,0.011049723756906077,13.121546961325967,447.0
-https://blog.groupdocs.com/signature/custom-hash-sign-with-azure-key-vault/,9,473,0.019027484143763214,15.49260042283298,443.0
-https://blog.groupdocs.com/metadata/edit-and-clean-xmp-in-svg/,1,57,0.017543859649122806,11.56140350877193,390.0
-https://blog.groupdocs.com/total/groupdocs-total-for-net-25-12/,1,39,0.02564102564102564,13.435897435897436,155.0
-https://blog.groupdocs.com/conversion/groupdocs-conversion-for-net-26-1/,1,86,0.011627906976744186,13.267441860465116,152.0
-https://blog.groupdocs.com/viewer/groupdocs-viewer-for-java-26-3/,1,59,0.01694915254237288,6.898305084745763,98.0
-https://blog.groupdocs.com/comparison/compare-csv-files-using-csharp/,5,232,0.021551724137931036,9.21551724137931,43.0
-https://blog.groupdocs.com/,31,1221,0.025389025389025387,10.92055692055692,
-https://blog.groupdocs.com/comparison/compare-word-documents/,1,48,0.020833333333333332,8.125,
+page,clicks_3m,impressions_3m,ctr_3m,position_3m,clicks_6m,impressions_6m,ctr_6m,position_6m,clicks_12m,impressions_12m,ctr_12m,position_12m,trend_pattern,max_clicks_any_period,high_click_url,min_position_any_period,position_ok,days_since_published,Recommended Action Reason,Recommended Action
+https://blog.groupdocs.com/signature/integration-of-groupdocs-efficient-online-signature-app-with-multiple-platforms/,0.0,22.0,0.0,31.454545454545453,0.0,35.0,0.0,23.8,1,66,0.015151515151515152,27.393939393939394,volatile,1.0,False,23.8,True,4863.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/viewer/sharepoint-plugin-groupdocs-viewer-for-net/,0.0,3.0,0.0,49.0,0.0,4.0,0.0,39.0,2,58,0.034482758620689655,46.39655172413793,volatile,2.0,False,39.0,True,3673.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/viewer/groupdocs-viewer-java-jsp-frontend/,0.0,30.0,0.0,17.6,0.0,49.0,0.0,18.346938775510203,2,118,0.01694915254237288,29.008474576271187,volatile,2.0,False,17.6,True,3544.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/signature/verify-digital-signature-in-documents-using-csharp/,0.0,61.0,0.0,57.19672131147541,1.0,131.0,0.007633587786259542,52.267175572519086,7,588,0.011904761904761904,38.964285714285715,declining,7.0,False,38.964285714285715,True,2485.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/parser/extract-data-from-invoices-or-receipts-in-csharp/,1.0,90.0,0.011111111111111112,24.9,4.0,206.0,0.019417475728155338,21.859223300970875,8,530,0.01509433962264151,34.80377358490566,volatile,8.0,False,21.859223300970875,True,2456.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/conversion/convert-a-jpeg-file-to-psd-programmatically-in-csharp/,,,,,0.0,5.0,0.0,16.2,1,54,0.018518518518518517,25.055555555555557,declining,1.0,False,16.2,True,2423.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/merger/merge-pdf-word-excel-ppt-files-in-csharp/,4.0,263.0,0.015209125475285171,17.174904942965778,8.0,611.0,0.01309328968903437,19.474631751227495,11,888,0.012387387387387387,23.138513513513512,improving,11.0,False,17.174904942965778,True,2156.0,improving page needs content and snippet refresh,CONTENT_PLUS_META
+https://blog.groupdocs.com/conversion/convert-msg-and-eml-files-to-pdf-in-java/,0.0,124.0,0.0,22.112903225806452,2.0,338.0,0.005917159763313609,21.09467455621302,8,731,0.01094391244870041,19.422708618331054,declining,8.0,False,19.422708618331054,True,2142.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/watermark/add-watermark-to-images-in-java/,1.0,138.0,0.007246376811594203,19.282608695652176,2.0,284.0,0.007042253521126761,22.556338028169016,7,468,0.014957264957264958,18.145299145299145,volatile,7.0,False,18.145299145299145,True,2129.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/conversion/convert-cad-drawings-to-pdf-in-csharp/,3.0,48.0,0.0625,18.354166666666668,3.0,76.0,0.039473684210526314,17.42105263157895,5,212,0.02358490566037736,18.816037735849058,improving,5.0,False,17.42105263157895,True,2075.0,improving page needs content and snippet refresh,CONTENT_PLUS_META
+https://blog.groupdocs.com/watermark/add-watermark-to-images-using-csharp-dotnet/,1.0,70.0,0.014285714285714285,19.785714285714285,3.0,203.0,0.014778325123152709,19.99014778325123,16,678,0.02359882005899705,23.281710914454276,declining,16.0,False,19.785714285714285,True,2033.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/conversion/convert-webp-to-jpg-png-and-pdf-in-java/,0.0,130.0,0.0,24.6,0.0,258.0,0.0,22.631782945736433,19,1264,0.015031645569620253,20.904272151898734,volatile,19.0,False,20.904272151898734,True,2004.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/assembly/generate-pdf-report-from-json-data-in-java/,0.0,84.0,0.0,28.928571428571427,1.0,237.0,0.004219409282700422,23.81856540084388,13,1171,0.011101622544833475,29.144321093082834,declining,13.0,False,23.81856540084388,True,1981.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/editor/edit-word-documents-in-csharp/,0.0,114.0,0.0,40.14035087719298,1.0,288.0,0.003472222222222222,32.02777777777778,11,896,0.012276785714285714,32.784598214285715,declining,11.0,False,32.02777777777778,True,1937.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/conversion/convert-eml-or-msg-file-to-pdf-in-csharp/,1.0,147.0,0.006802721088435374,27.775510204081634,1.0,316.0,0.0031645569620253164,31.45886075949367,12,1116,0.010752688172043012,28.302867383512545,volatile,12.0,False,27.775510204081634,True,1876.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/merger/merge-multiple-file-types-using-java/,2.0,349.0,0.0057306590257879654,24.392550143266476,4.0,792.0,0.005050505050505051,21.440656565656564,15,1304,0.011503067484662576,18.697852760736197,volatile,15.0,False,18.697852760736197,True,1858.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/assembly/generate-reports-from-csv-data-in-java/,0.0,29.0,0.0,29.75862068965517,0.0,61.0,0.0,29.39344262295082,5,465,0.010752688172043012,51.58709677419355,volatile,5.0,False,29.39344262295082,True,1834.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/conversion/convert-csv-to-xml-in-csharp/,1.0,73.0,0.0136986301369863,26.465753424657535,1.0,210.0,0.004761904761904762,17.50952380952381,15,960,0.015625,28.723958333333332,volatile,15.0,False,17.50952380952381,True,1752.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/editor/edit-xml-files-using-csharp/,2.0,330.0,0.006060606060606061,41.86969696969697,6.0,661.0,0.009077155824508321,31.411497730711044,16,1230,0.013008130081300813,30.4130081300813,declining,16.0,False,30.4130081300813,True,1716.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/editor/edit-xml-files-in-java/,0.0,235.0,0.0,52.182978723404254,2.0,454.0,0.004405286343612335,42.15638766519824,13,1000,0.013,31.812,declining,13.0,False,31.812,True,1712.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/comparison/compare-word-documents-using-csharp/,4.0,99.0,0.04040404040404041,22.939393939393938,6.0,188.0,0.031914893617021274,17.28191489361702,10,398,0.02512562814070352,15.293969849246231,improving,10.0,False,15.293969849246231,True,1687.0,healthy trend with acceptable CTR,TITLE_META
+https://blog.groupdocs.com/viewer/convert-source-code-to-pdf-in-csharp/,0.0,297.0,0.0,45.0976430976431,3.0,710.0,0.004225352112676056,38.81549295774648,45,3489,0.012897678417884782,21.96445973058183,declining,45.0,False,21.96445973058183,True,1685.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/viewer/convert-source-code-to-pdf-in-java/,1.0,344.0,0.0029069767441860465,37.67151162790697,2.0,869.0,0.0023014959723820483,33.09205983889528,33,3089,0.01068306895435416,23.651019747491098,volatile,33.0,False,23.651019747491098,True,1672.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/merger/move-word-pages-using-csharp/,1.0,127.0,0.007874015748031496,17.094488188976378,4.0,308.0,0.012987012987012988,15.834415584415584,10,641,0.015600624024960999,18.195007800312013,declining,10.0,False,15.834415584415584,True,1621.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/editor/edit-excel-files-in-csharp/,2.0,64.0,0.03125,23.796875,4.0,183.0,0.02185792349726776,18.202185792349727,9,482,0.01867219917012448,23.479253112033195,improving,9.0,False,18.202185792349727,True,1620.0,improving page needs content and snippet refresh,CONTENT_PLUS_META
+https://blog.groupdocs.com/conversion/convert-cad-drawings-to-pdf-in-java/,3.0,101.0,0.0297029702970297,17.683168316831683,6.0,248.0,0.024193548387096774,15.153225806451612,20,713,0.028050490883590462,18.992987377279103,volatile,20.0,False,15.153225806451612,True,1618.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/watermark/remove-watermark-from-pdf-in-csharp/,0.0,74.0,0.0,64.36486486486487,0.0,160.0,0.0,37.05625,24,953,0.025183630640083946,21.431269674711437,volatile,24.0,False,21.431269674711437,True,1573.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/editor/edit-excel-files-in-java/,0.0,65.0,0.0,19.846153846153847,2.0,170.0,0.011764705882352941,17.61764705882353,6,368,0.016304347826086956,17.820652173913043,declining,6.0,False,17.61764705882353,True,1566.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/conversion/convert-svg-to-jpg-using-csharp/,0.0,142.0,0.0,60.11267605633803,0.0,212.0,0.0,51.632075471698116,11,826,0.013317191283292978,37.52179176755448,volatile,11.0,False,37.52179176755448,True,1453.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/conversion/convert-svg-to-jpg-in-java/,0.0,33.0,0.0,16.727272727272727,1.0,72.0,0.013888888888888888,19.680555555555557,5,363,0.013774104683195593,25.818181818181817,volatile,5.0,False,16.727272727272727,True,1442.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/comparison/compare-multiple-word-documents-in-java/,1.0,74.0,0.013513513513513514,33.445945945945944,2.0,89.0,0.02247191011235955,30.93258426966292,3,144,0.020833333333333332,23.944444444444443,volatile,3.0,False,23.944444444444443,True,1404.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/parser/extract-text-from-markdown-files-in-java/,0.0,62.0,0.0,21.129032258064516,0.0,212.0,0.0,27.839622641509433,6,466,0.012875536480686695,24.757510729613735,volatile,6.0,False,21.129032258064516,True,1364.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/merger/merge-excel-files-and-spreadsheets-in-java/,0.0,68.0,0.0,21.13235294117647,1.0,281.0,0.0035587188612099642,20.412811387900355,7,477,0.014675052410901468,16.865828092243184,declining,7.0,False,16.865828092243184,True,1309.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/conversion/convert-word-doc-docx-to-pdf-in-java/,0.0,440.0,0.0,36.95,4.0,1108.0,0.0036101083032490976,39.73736462093863,46,3339,0.013776579814315664,28.48038334830788,declining,46.0,False,28.48038334830788,True,1286.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/conversion/convert-pdf-to-html-in-java/,1.0,140.0,0.007142857142857143,27.37142857142857,1.0,272.0,0.003676470588235294,26.496323529411764,17,1018,0.01669941060903733,24.692534381139488,volatile,17.0,False,24.692534381139488,True,1273.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/viewer/xml-viewer-online/,51.0,5399.0,0.009446193739581403,18.152806075199113,141.0,14115.0,0.009989373007438894,15.522706340772228,388,36418,0.010654072162117634,15.733620736998187,declining,388.0,False,15.522706340772228,True,1237.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/viewer/xml-viewer-using-csharp/,1.0,70.0,0.014285714285714285,33.628571428571426,4.0,152.0,0.02631578947368421,25.49342105263158,19,477,0.039832285115303984,26.40251572327044,declining,19.0,False,25.49342105263158,True,1211.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/viewer/xml-viewer-using-java/,0.0,100.0,0.0,43.23,1.0,142.0,0.007042253521126761,39.056338028169016,5,411,0.012165450121654502,31.78832116788321,declining,5.0,False,31.78832116788321,True,1209.0,ranking is deep in search results,FULL_REFRESH
+https://blog.groupdocs.com/comparison/compare-pdf-documents-using-java/,0.0,149.0,0.0,21.369127516778523,1.0,418.0,0.0023923444976076554,16.894736842105264,22,1752,0.012557077625570776,19.208333333333332,declining,22.0,False,16.894736842105264,True,1205.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/parser/scan-qr-code-using-java/,4.0,242.0,0.01652892561983471,36.099173553719005,6.0,691.0,0.008683068017366137,28.211287988422576,46,3017,0.015246934040437522,23.749419953596288,volatile,46.0,False,23.749419953596288,True,1163.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/merger/merge-word-files-using-csharp/,3.0,226.0,0.01327433628318584,18.72566371681416,4.0,432.0,0.009259259259259259,20.145833333333332,9,740,0.012162162162162163,18.528378378378378,volatile,9.0,False,18.528378378378378,True,1141.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/merger/password-protect-word-document-online/,1.0,455.0,0.002197802197802198,26.463736263736262,9.0,907.0,0.009922822491730982,26.09261300992282,15,1375,0.01090909090909091,26.637090909090908,declining,15.0,False,26.09261300992282,True,1107.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/editor/edit-excel-spreadsheet/,24.0,3943.0,0.006086735987826528,27.62972356074055,75.0,8821.0,0.008502437365378075,25.139213241129124,278,26102,0.010650524863995096,23.413416596429393,declining,278.0,False,23.413416596429393,True,1029.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/editor/edit-presentation-ppt-pptx/,19.0,2350.0,0.008085106382978723,25.863829787234042,80.0,5926.0,0.01349983125210935,22.920182247721904,412,22863,0.01802038227704151,19.62380265057079,declining,412.0,False,19.62380265057079,True,1021.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/metadata/view-edit-mp3-tags/,24.0,1030.0,0.02330097087378641,16.55631067961165,48.0,2815.0,0.01705150976909414,18.69733570159858,60,3560,0.016853932584269662,19.16179775280899,improving,60.0,False,16.55631067961165,True,1008.0,improving page needs content and snippet refresh,CONTENT_PLUS_META
+https://blog.groupdocs.com/metadata/view-edit-epub-metadata-using-csharp/,2.0,223.0,0.008968609865470852,30.63677130044843,9.0,583.0,0.015437392795883362,24.010291595197256,21,1576,0.0133248730964467,18.730964467005077,volatile,21.0,False,18.730964467005077,True,999.0,borderline second-page ranking with unstable trend,TITLE_META
+https://blog.groupdocs.com/metadata/manage-epub-metadata-using-java/,2.0,215.0,0.009302325581395349,31.186046511627907,4.0,402.0,0.009950248756218905,26.437810945273633,8,796,0.010050251256281407,21.67211055276382,declining,8.0,False,21.67211055276382,True,995.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/search/online-text-search/,6.0,476.0,0.012605042016806723,27.502100840336134,16.0,2076.0,0.007707129094412331,39.91329479768786,155,10390,0.014918190567853706,29.492781520692976,volatile,155.0,False,27.502100840336134,True,958.0,volatile or declining trend with weak second-page ranking,FULL_REFRESH
+https://blog.groupdocs.com/signature/custom-hash-sign-with-azure-key-vault/,4.0,234.0,0.017094017094017096,18.474358974358974,9.0,425.0,0.021176470588235293,15.717647058823529,21,1941,0.010819165378670788,20.37197320968573,volatile,21.0,False,15.717647058823529,True,457.0,borderline second-page ranking with unstable trend,TITLE_META
