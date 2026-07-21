@@ -9,6 +9,9 @@ from unittest.mock import patch
 os.environ["PROFESSIONALIZE_API_KEY_OPTIMIZER"] = "test-key"
 os.environ["AGENT_METRICS_API_KEY"] = "test-metrics-key"
 os.environ["BLOGS_TEAM_TOKEN"] = "test-blogs-team-token"
+os.environ["BLOGS_TEAM_WEB_APP_URL"] = "https://example.com/blogs-team-web-app"
+os.environ["BLOG_OPTIMIZATION_LOG_WEB_APP_URL"] = "https://example.com/optimization-log-web-app"
+os.environ["BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET"] = "test-optimization-log-secret"
 
 from blog_optimizer_agent import (
     clean_optimized_content,
@@ -64,12 +67,14 @@ class BlogOptimizerAgentTests(unittest.TestCase):
         post_args, post_kwargs = mock_post.call_args
         self.assertEqual(
             post_args[0],
-            "https://script.google.com/macros/s/AKfycbwYyPBs3ox6xhYfznVpu4Gh8T4l7cXrAIj1m_y1g-vWn6tyP_LAkv3eo6W2EZYAeHgLag/exec?token=test-blogs-team-token",
+            "https://example.com/blogs-team-web-app",
         )
         self.assertEqual(post_kwargs["headers"], {"Content-Type": "application/json"})
         self.assertEqual(post_kwargs["timeout"], 10)
         self.assertIn('"run_env": "PROD"', post_kwargs["data"])
         self.assertIn('"api_calls_count": 3', post_kwargs["data"])
+        self.assertIn('"shared_secret": "test-blogs-team-token"', post_kwargs["data"])
+        self.assertIn('"token": "test-blogs-team-token"', post_kwargs["data"])
 
     def test_preserves_hugo_gist_shortcode(self):
         content = """---
@@ -134,21 +139,21 @@ lastmod: 2026-06-09
     def test_candidate_csv_path_changes_by_brand(self):
         self.assertEqual(
             str(candidate_csv_path_for_brand("aspose")),
-            "csv/aspose_candidates.csv",
+            "csv/aspose.csv",
         )
         self.assertEqual(
             str(candidate_csv_path_for_brand("conholdate")),
-            "csv/conholdate_candidates.csv",
+            "csv/conholdate.csv",
         )
         self.assertEqual(
             str(candidate_csv_path_for_brand("groupdocs-cloud")),
-            "csv/groupdocs_cloud_candidates.csv",
+            "csv/groupdocs_cloud.csv",
         )
 
     def test_resolve_input_csv_prefers_candidates_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             csv_dir = Path(tmpdir)
-            candidate_path = csv_dir / "aspose_candidates.csv"
+            candidate_path = csv_dir / "aspose.csv"
             candidate_path.write_text("page\nhttps://example.com/\n", encoding="utf-8")
 
             resolved = resolve_input_csv_for_brand("aspose", csv_dir=csv_dir)

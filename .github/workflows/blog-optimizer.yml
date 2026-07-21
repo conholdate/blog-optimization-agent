@@ -148,6 +148,9 @@ jobs:
           PROFESSIONALIZE_EMBEDDING_MODEL: ${{ secrets.PROFESSIONALIZE_EMBEDDING_MODEL }}
           AGENT_METRICS_API_KEY: ${{ secrets.AGENT_METRICS_API_KEY }}
           BLOGS_TEAM_TOKEN: ${{ secrets.BLOGS_TEAM_TOKEN }}
+          BLOGS_TEAM_WEB_APP_URL: ${{ secrets.BLOGS_TEAM_WEB_APP_URL }}
+          BLOG_OPTIMIZATION_LOG_WEB_APP_URL: ${{ secrets.BLOG_OPTIMIZATION_LOG_WEB_APP_URL }}
+          BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET: ${{ secrets.BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET }}
         run: |
           missing=0
 
@@ -173,6 +176,21 @@ jobs:
 
           if [ -z "$BLOGS_TEAM_TOKEN" ]; then
             echo "Missing secret: BLOGS_TEAM_TOKEN"
+            missing=1
+          fi
+
+          if [ -z "$BLOGS_TEAM_WEB_APP_URL" ]; then
+            echo "Missing secret: BLOGS_TEAM_WEB_APP_URL"
+            missing=1
+          fi
+
+          if [ -z "$BLOG_OPTIMIZATION_LOG_WEB_APP_URL" ]; then
+            echo "Missing secret: BLOG_OPTIMIZATION_LOG_WEB_APP_URL"
+            missing=1
+          fi
+
+          if [ -z "$BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET" ]; then
+            echo "Missing secret: BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET"
             missing=1
           fi
 
@@ -221,6 +239,9 @@ jobs:
           PROFESSIONALIZE_EMBEDDING_MODEL: ${{ secrets.PROFESSIONALIZE_EMBEDDING_MODEL }}
           AGENT_METRICS_API_KEY: ${{ secrets.AGENT_METRICS_API_KEY }}
           BLOGS_TEAM_TOKEN: ${{ secrets.BLOGS_TEAM_TOKEN }}
+          BLOGS_TEAM_WEB_APP_URL: ${{ secrets.BLOGS_TEAM_WEB_APP_URL }}
+          BLOG_OPTIMIZATION_LOG_WEB_APP_URL: ${{ secrets.BLOG_OPTIMIZATION_LOG_WEB_APP_URL }}
+          BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET: ${{ secrets.BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET }}
         run: |
           python blog_optimizer_agent.py \
             --brand ${{ matrix.brand }} \

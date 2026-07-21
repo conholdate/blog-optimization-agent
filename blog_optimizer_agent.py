@@ -68,8 +68,12 @@ METRICS_API_ENDPOINT = "https://metrics-api.aspose.app/agents"
 METRICS_API_KEY = os.getenv("AGENT_METRICS_API_KEY")
 
 # Blogs Team Metrics Configuration
-BLOGS_TEAM_ENDPOINT = "https://script.google.com/macros/s/AKfycbwYyPBs3ox6xhYfznVpu4Gh8T4l7cXrAIj1m_y1g-vWn6tyP_LAkv3eo6W2EZYAeHgLag/exec"
+BLOGS_TEAM_ENDPOINT = os.getenv("BLOGS_TEAM_WEB_APP_URL")
 BLOGS_TEAM_TOKEN = os.getenv("BLOGS_TEAM_TOKEN")
+
+# Optimization log sheet configuration
+OPTIMIZATION_LOG_ENDPOINT = os.getenv("BLOG_OPTIMIZATION_LOG_WEB_APP_URL")
+OPTIMIZATION_LOG_SHARED_SECRET = os.getenv("BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET") or os.getenv("APPS_SCRIPT_SHARED_SECRET")
 
 # Brand configuration
 BRAND_CONFIG = {
@@ -582,17 +586,24 @@ def send_to_google_sheet(domain_info: dict, slug: str, url: str, last_optimized:
     Send log data to Google Sheet via Apps Script web app.
     """
     try:
-        GOOGLE_SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycbwDr1dcuFlm2IYiW9Zpemu9Fb8HchVDD2Lh6KkmGLmMsvMmtyT8d0GrWhD1YgwdMvxULw/exec"
+        if not OPTIMIZATION_LOG_ENDPOINT:
+            print("Error sending to Google Sheet: BLOG_OPTIMIZATION_LOG_WEB_APP_URL is not set")
+            return False
+        if not OPTIMIZATION_LOG_SHARED_SECRET:
+            print("Error sending to Google Sheet: BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET (or APPS_SCRIPT_SHARED_SECRET) is not set")
+            return False
 
         payload = {
             "slug": slug,
             "url": url,
             "domain": domain_info['full_domain'],
-            "last_optimized": last_optimized
+            "last_optimized": last_optimized,
+            "shared_secret": OPTIMIZATION_LOG_SHARED_SECRET,
+            "token": OPTIMIZATION_LOG_SHARED_SECRET,
         }
 
         response = requests.post(
-            GOOGLE_SHEET_ENDPOINT,
+            OPTIMIZATION_LOG_ENDPOINT,
             headers={"Content-Type": "application/json"},
             data=json.dumps(payload),
             timeout=10
@@ -729,17 +740,21 @@ def has_language_code_prefix(url: str):
 # ----------------------------------------------------
 # 4. Metrics Reporting Functions
 # ----------------------------------------------------
-def post_json_with_query_token(
+def post_json_with_shared_secret(
     endpoint: str,
     payload: dict,
-    token: str,
+    shared_secret: str,
+    secret_field: str = "shared_secret",
     timeout: int = 10,
 ):
-    """Send a JSON POST request with the token in the query string."""
+    """Send a JSON POST request with the shared secret in the body."""
+    request_payload = payload.copy()
+    request_payload[secret_field] = shared_secret
+    request_payload.setdefault("token", shared_secret)
     return requests.post(
-        f"{endpoint}?token={token}",
+        endpoint,
         headers={"Content-Type": "application/json"},
-        data=json.dumps(payload),
+        data=json.dumps(request_payload),
         timeout=timeout,
     )
 
@@ -885,13 +900,16 @@ def send_blogs_team_report(
     if not has_blogs_team_token:
         print("\nSkipping Blogs Team Metrics because BLOGS_TEAM_TOKEN is not set.")
         return False
+    if not BLOGS_TEAM_ENDPOINT:
+        print("\nSkipping Blogs Team Metrics because BLOGS_TEAM_WEB_APP_URL is not set.")
+        return False
 
     blog_team_payload = payload.copy()
     blog_team_payload["run_env"] = env
 
     print(f"\nSending to Blogs Team Metrics Endpoint: {BLOGS_TEAM_ENDPOINT}")
     print(f"Blogs Team payload keys: {list(blog_team_payload.keys())}")
-    response = post_json_with_query_token(
+    response = post_json_with_shared_secret(
         BLOGS_TEAM_ENDPOINT,
         blog_team_payload,
         BLOGS_TEAM_TOKEN,
@@ -1550,6 +1568,25 @@ def candidate_csv_path_for_brand(brand: str | None) -> Path:
     """Build the brand-specific candidate CSV path."""
     brand_slug = (brand or "aspose").strip().lower().replace("-", "_")
     return Path("csv") / f"{brand_slug}.csv"
+
+
+def resolve_input_csv_for_brand(brand: str | None, csv_dir: Path = Path("csv")) -> Path:
+    """
+    Resolve the CSV used as input for the optimizer.
+    Prefer the candidate CSV; fall back to the legacy brand CSV.
+    """
+    candidate_path = csv_dir / f"{(brand or 'aspose').strip().lower().replace('-', '_')}.csv"
+    if candidate_path.exists():
+        return candidate_path
+
+    legacy_config = BRAND_CONFIG.get(brand or "aspose", {})
+    legacy_csv = legacy_config.get("csv_file")
+    if legacy_csv:
+        legacy_path = Path(legacy_csv)
+        if legacy_path.exists():
+            return legacy_path
+
+    return candidate_path
 
 
 def load_recommendation_lookup(csv_path: Path) -> dict:
