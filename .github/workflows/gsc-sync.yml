@@ -170,8 +170,10 @@ jobs:
         env:
           GSC_CLIENT_SECRET_JSON: ${{ secrets.GSC_CLIENT_SECRET_JSON }}
           GSC_CREDENTIALS_JSON: ${{ secrets.GSC_CREDENTIALS_JSON }}
+          GSC_WEB_APP_SECRET: ${{ secrets.GSC_WEB_APP_SECRET }}
         run: |
           [ -n "$GSC_CLIENT_SECRET_JSON" ] || { echo "Set GSC_CLIENT_SECRET_JSON secret"; exit 1; }
+          [ -n "$GSC_WEB_APP_SECRET" ] || { echo "Set GSC_WEB_APP_SECRET secret"; exit 1; }
           printf '%s' "$GSC_CLIENT_SECRET_JSON" > client_secret.json
           if [ -n "$GSC_CREDENTIALS_JSON" ]; then
             printf '%s' "$GSC_CREDENTIALS_JSON" > credentials.json
@@ -183,6 +185,7 @@ jobs:
           BLOG_CONTENT_ROOT: ${{ github.workspace }}/${{ matrix.path }}
           GSC_WEB_APP_URL: ${{ secrets[matrix.web_app_secret] }}
           GSC_SPREADSHEET_ID: ${{ secrets[matrix.spreadsheet_secret] }}
+          GSC_WEB_APP_SECRET: ${{ secrets.GSC_WEB_APP_SECRET }}
         run: python ${{ matrix.script }}
 
       - name: Verify Days Since Published in CSV

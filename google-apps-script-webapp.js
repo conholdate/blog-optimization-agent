@@ -2,6 +2,7 @@
 // Supports generic CSV payload rows.
 
 const DEFAULT_SHEET_NAME = "blog.aspose.com";
+const SHARED_SECRET_PROPERTY = "SHARED_SECRET";
 
 function doPost(e) {
   try {
@@ -10,6 +11,16 @@ function doPost(e) {
     }
 
     const data = JSON.parse(e.postData.contents);
+    const configuredSecret = getConfiguredSharedSecret();
+    if (!configuredSecret) {
+      return createResponse(false, "Server misconfigured: missing shared secret");
+    }
+
+    const providedSecret = extractProvidedSecret(data, e);
+    if (!providedSecret || providedSecret !== configuredSecret) {
+      return createResponse(false, "Unauthorized");
+    }
+
     if (data.action === "import_data") {
       return handleImportData(data);
     }
@@ -59,6 +70,21 @@ function resolveSheetName(data, rows) {
   }
 
   return DEFAULT_SHEET_NAME;
+}
+
+function getConfiguredSharedSecret() {
+  const props = PropertiesService.getScriptProperties();
+  return String(props.getProperty(SHARED_SECRET_PROPERTY) || "").trim();
+}
+
+function extractProvidedSecret(data, e) {
+  const bodySecret = data && typeof data === "object"
+    ? String(data.shared_secret || data.token || "").trim()
+    : "";
+  const querySecret = e && e.parameter
+    ? String(e.parameter.shared_secret || e.parameter.token || "").trim()
+    : "";
+  return bodySecret || querySecret;
 }
 
 function trimTrailingBlanks(values) {

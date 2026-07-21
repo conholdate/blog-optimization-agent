@@ -42,7 +42,8 @@ Usage
 
 Environment variables (optional overrides):
   BLOG_CONTENT_ROOT   path to local content repo for publish-date enrichment
-  ASPOSE_WEB_APP_URL  Google Apps Script endpoint  (upload, not required here)
+  GSC_WEB_APP_URL / GSC_WEB_APP_SECRET  Google Apps Script endpoint and shared secret
+  ASPOSE_WEB_APP_URL  legacy compatibility alias for the endpoint
   ASPOSE_SPREADSHEET_ID
   PROFESSIONALIZE_API_KEY_OPTIMIZER / PROFESSIONALIZE_API_KEY
   PROFESSIONALIZE_BASE_URL / PROFESSIONALIZE_LLM_MODEL
@@ -121,20 +122,9 @@ PERIODS = [
 ]
 
 CSV_FOLDER = "csv"
-WEB_APP_URL = os.getenv(
-    "GSC_WEB_APP_URL",
-    os.getenv(
-        "ASPOSE_WEB_APP_URL",
-        "https://script.google.com/macros/s/AKfycbxPC2s79zRyDM7Dldgrlcipa_vS5H_6NDiQyslLZZPeF70c6cEVPrQt-5zFZwimvQ7jDw/exec",
-    ),
-)
-SPREADSHEET_ID = os.getenv(
-    "GSC_SPREADSHEET_ID",
-    os.getenv(
-        "ASPOSE_SPREADSHEET_ID",
-        "18sYeMy0pYD7-eJxBO674MCpsQy8ACCGnh9RefqPSW_A",
-    ),
-)
+WEB_APP_URL = os.getenv("GSC_WEB_APP_URL") or os.getenv("ASPOSE_WEB_APP_URL")
+WEB_APP_SHARED_SECRET = os.getenv("GSC_WEB_APP_SECRET") or os.getenv("APPS_SCRIPT_SHARED_SECRET")
+SPREADSHEET_ID = os.getenv("GSC_SPREADSHEET_ID") or os.getenv("ASPOSE_SPREADSHEET_ID")
 SHEET_NAME = os.getenv("GSC_SHEET_NAME", "blog.aspose.com")
 UPLOAD_CHUNK_SIZE = 3000
 
@@ -187,12 +177,24 @@ def clean_row_record(record: dict) -> dict:
 
 def send_to_google_sheets(rows, is_first_chunk=True):
     """Send rows to the Apps Script receiver."""
+    if not WEB_APP_URL:
+        print("  Upload failed: GSC_WEB_APP_URL is not set")
+        return False, None
+    if not SPREADSHEET_ID:
+        print("  Upload failed: GSC_SPREADSHEET_ID is not set")
+        return False, None
+    if not WEB_APP_SHARED_SECRET:
+        print("  Upload failed: GSC_WEB_APP_SECRET (or APPS_SCRIPT_SHARED_SECRET) is not set")
+        return False, None
+
     payload = {
         "action": "import_data",
         "spreadsheetId": SPREADSHEET_ID,
         "sheetName": SHEET_NAME,
         "rows": rows,
         "clearExisting": is_first_chunk,
+        "shared_secret": WEB_APP_SHARED_SECRET,
+        "token": WEB_APP_SHARED_SECRET,
     }
 
     try:
