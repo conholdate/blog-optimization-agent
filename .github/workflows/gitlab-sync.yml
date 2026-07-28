@@ -15,6 +15,28 @@ jobs:
           fetch-depth: 0
 
       - name: Push to GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
-          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git
-          git push gitlab main --force
+          set -euo pipefail
+
+          [ -n "$GITLAB_TOKEN" ] || { echo "Set GITLAB_TOKEN secret"; exit 1; }
+
+          git config --global credential.helper "store --file=$HOME/.git-credentials"
+          git config --global credential.useHttpPath true
+          trap 'rm -f "$HOME/.git-credentials"' EXIT
+
+          printf 'protocol=https\nhost=gitlab.recruitize.ai\nusername=oauth2\npassword=%s\n\n' "$GITLAB_TOKEN" | git credential approve
+
+          git remote add gitlab https://gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git
+
+          git fetch gitlab main
+          if git rev-parse --verify gitlab/main >/dev/null 2>&1; then
+            if ! git merge-base --is-ancestor gitlab/main HEAD; then
+              echo "GitLab main has diverged and protected branches do not allow force-push."
+              echo "Resolve the divergence on GitLab or push to an unprotected mirror branch."
+              exit 1
+            fi
+          fi
+
+          git push gitlab HEAD:main
