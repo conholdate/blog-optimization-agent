@@ -26,7 +26,7 @@ jobs:
           git config --global credential.useHttpPath true
           trap 'rm -f "$HOME/.git-credentials"' EXIT
 
-          printf 'protocol=https\nhost=gitlab.recruitize.ai\nusername=oauth2\npassword=%s\n\n' "$GITLAB_TOKEN" | git credential approve
+          printf 'protocol=https\nhost=gitlab.recruitize.ai\npath=sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git\nusername=oauth2\npassword=%s\n\n' "$GITLAB_TOKEN" | git credential approve
 
           git remote add gitlab https://gitlab.recruitize.ai/sialkot/lahore-aspose/lahore-blogs-team/blog-optimization-agent.git
 
