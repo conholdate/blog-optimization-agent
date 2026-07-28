@@ -10,6 +10,22 @@ on:
         description: "Skip random delay (useful for manual testing)"
         type: boolean
         default: true
+      daily_limit_override:
+        description: "Manual daily limit override for this run"
+        type: choice
+        default: default
+        options:
+          - default
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+          - "6"
+          - "7"
+          - "8"
+          - "9"
+          - "10"
       run_conholdate:
         description: "Run conholdate"
         type: boolean
@@ -243,9 +259,30 @@ jobs:
           BLOG_OPTIMIZATION_LOG_WEB_APP_URL: ${{ secrets.BLOG_OPTIMIZATION_LOG_WEB_APP_URL }}
           BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET: ${{ secrets.BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET }}
         run: |
+          set -euo pipefail
+
+          limit_args=()
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.daily_limit_override }}" != "default" ]; then
+            override="${{ github.event.inputs.daily_limit_override }}"
+
+            if ! [[ "$override" =~ ^[0-9]+$ ]]; then
+              echo "daily_limit_override must be a whole number between 1 and 10."
+              exit 1
+            fi
+
+            if [ "$override" -lt 1 ] || [ "$override" -gt 10 ]; then
+              echo "daily_limit_override must be greater than 0 and less than or equal to 10."
+              exit 1
+            fi
+
+            echo "Using manual daily limit override: $override"
+            limit_args=(--limit "$override")
+          fi
+
           python blog_optimizer_agent.py \
             --brand ${{ matrix.brand }} \
-            --sourcepath "${{ github.workspace }}/${{ matrix.path }}"
+            --sourcepath "${{ github.workspace }}/${{ matrix.path }}" \
+            "${limit_args[@]}"
 
       - name: Check for optimized markdown changes
         id: blog_changes
