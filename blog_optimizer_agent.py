@@ -17,6 +17,7 @@ from pathlib import Path
 import time
 import json
 import random
+from urllib.parse import urlsplit, urlunsplit
 
 # For API call
 import requests
@@ -411,6 +412,7 @@ def save_optimization_log_for_domain(domain_info: dict, log_data: dict):
 def save_to_combined_log(domain_info: dict, slug: str, url: str, last_optimized: str):
     """Save an entry to the combined log file."""
     log_file_path = Path(LOG_DIR) / LOG_FILE_COMBINED
+    normalized_url = normalize_optimization_url(url)
 
     # Ensure directory exists
     log_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -428,9 +430,16 @@ def save_to_combined_log(domain_info: dict, slug: str, url: str, last_optimized:
     # Update or add entry
     updated = False
     for row in existing_data:
-        if row.get('slug') == slug and row.get('domain') == domain_info['full_domain']:
+        row_domain = row.get('domain', '')
+        row_url = normalize_optimization_url(row.get('url', ''))
+        same_domain = row_domain == domain_info['full_domain']
+        same_url = bool(normalized_url and row_url and row_url == normalized_url)
+        same_slug = bool(slug and row.get('slug') == slug and not row_url)
+
+        if same_domain and (same_url or same_slug):
             row['last_optimized'] = last_optimized
             row['url'] = url
+            row['slug'] = slug
             updated = True
             break
 
@@ -453,6 +462,111 @@ def save_to_combined_log(domain_info: dict, slug: str, url: str, last_optimized:
 
     send_to_google_sheet(domain_info, slug, url, last_optimized)
 
+def normalize_optimization_url(value: str) -> str:
+    """Normalize a URL for safe comparisons in optimization logs."""
+    if not value:
+        return ""
+
+    text = str(value).strip()
+    if not text:
+        return ""
+
+    try:
+        parsed = urlsplit(text)
+        if parsed.scheme and parsed.netloc:
+            return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), parsed.path.rstrip("/"), "", ""))
+    except Exception:
+        pass
+
+    return text.rstrip("/")
+
+def parse_strict_date(value):
+    """Parse supported date formats or return None."""
+    if not value:
+        return None
+
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip()
+    if not text:
+        return None
+
+    date_formats = (
+        '%Y-%m-%d',
+        '%a, %d %b %Y %H:%M:%S %z',
+        '%a, %d %b %Y %H:%M:%S GMT',
+        '%a, %d %b %Y %H:%M:%S %Z',
+        '%d %b %Y',
+        '%b %d, %Y',
+        '%m/%d/%Y',
+        '%Y/%m/%d',
+        '%Y-%m-%dT%H:%M:%S%z',
+        '%Y-%m-%dT%H:%M:%S',
+    )
+
+    for date_format in date_formats:
+        try:
+            parsed = datetime.strptime(text, date_format)
+            return parsed.date()
+        except ValueError:
+            continue
+
+    if text.endswith(" GMT"):
+        try:
+            normalized = text[:-4] + " +0000"
+            return datetime.strptime(normalized, '%a, %d %b %Y %H:%M:%S %z').date()
+        except ValueError:
+            pass
+
+    return None
+
+def find_matching_log_entries(log_data: dict, slug: str, target_url: str = None):
+    """Return all log rows matching a slug or canonical URL."""
+    matches = []
+    target_url_norm = normalize_optimization_url(target_url) if target_url else ""
+
+    for record_slug, record in log_data.items():
+        record_url_norm = normalize_optimization_url(record.get('url', ''))
+        if target_url_norm and record_url_norm and record_url_norm == target_url_norm:
+            matches.append((record_slug, record))
+        elif not target_url_norm and slug and record_slug == slug:
+            matches.append((record_slug, record))
+
+    return matches
+
+def evaluate_log_history(matches: list, source_label: str):
+    """Evaluate log matches and fail closed on recent or invalid dates."""
+    if not matches:
+        return True, ""
+
+    parsed_dates = []
+    for record_slug, record in matches:
+        parsed = parse_strict_date(record.get('last_optimized', ''))
+        if not parsed:
+            return False, f"Invalid date in {source_label} for '{record_slug}'. Skipping for safety."
+        parsed_dates.append(parsed)
+
+    latest_date = max(parsed_dates)
+    today = date.today()
+    days_since_last_opt = (today - latest_date).days
+
+    if days_since_last_opt < 0:
+        return False, f"Optimization date is in the future ({latest_date}). Skipping for safety."
+
+    if days_since_last_opt < MIN_DAYS_BETWEEN_OPTIMIZATIONS:
+        remaining_days = MIN_DAYS_BETWEEN_OPTIMIZATIONS - days_since_last_opt
+        return False, (
+            f"Optimized {days_since_last_opt} days ago. "
+            f"Can optimize again in {remaining_days} days. ({source_label})"
+        )
+
+    return True, f"Last optimized {days_since_last_opt} days ago ({source_label})"
+
 def update_optimization_log(domain_info: dict, slug: str, url: str):
     """Update the optimization log for a specific slug and domain."""
     # Update domain-specific log
@@ -469,116 +583,37 @@ def update_optimization_log(domain_info: dict, slug: str, url: str):
 
     print(f"Updated log for '{slug}' from {domain_info['full_domain']}: {today_str}")
 
-def can_optimize_slug(domain_info: dict, slug: str, publish_date = None):
-    """Check if a slug can be optimized based on last optimization date and publish date."""
+def can_optimize_slug(domain_info: dict, slug: str, publish_date=None, target_url: str = None):
+    """Check if a slug can be optimized based on publish date and optimization history."""
 
-    # Rule 1: Check if post is at least MIN_DAYS_SINCE_PUBLISH days old
-    if publish_date:
-        try:
-            # Handle both string and datetime.date objects
-            if isinstance(publish_date, str):
-                # Try multiple date formats
-                post_date = None
-                date_formats = [
-                    '%Y-%m-%d',                    # 2025-10-02
-                    '%a, %d %b %Y %H:%M:%S %z',   # Thu, 02 Oct 2025 00:11:25 +0000
-                    '%a, %d %b %Y %H:%M:%S GMT',  # Thu, 31 Oct 2024 00:16:02 GMT
-                    '%a, %d %b %Y %H:%M:%S %Z',   # Thu, 31 Oct 2024 00:16:02 UTC/GMT
-                    '%d %b %Y',                    # 02 Oct 2025
-                    '%b %d, %Y',                   # Oct 02, 2025
-                    '%m/%d/%Y',                    # 10/02/2025
-                    '%Y/%m/%d',                    # 2025/10/02
-                ]
+    # Rule 1: The publish date must be known and at least MIN_DAYS_SINCE_PUBLISH days old.
+    post_date = parse_strict_date(publish_date)
+    if not post_date:
+        return False, "Publish date is missing or unparseable. Skipping for safety."
 
-                for date_format in date_formats:
-                    try:
-                        # For formats with timezone, parse as datetime first
-                        if '%z' in date_format or '%H' in date_format:
-                            dt = datetime.strptime(publish_date, date_format)
-                            post_date = dt.date()
-                        else:
-                            post_date = datetime.strptime(publish_date, date_format).date()
-                        break  # Successfully parsed
-                    except ValueError:
-                        continue
+    today = date.today()
+    days_since_publish = (today - post_date).days
 
-                # Extra fallback: handle "GMT" by converting to +0000
-                if not post_date and publish_date.endswith(" GMT"):
-                    try:
-                        normalized = publish_date[:-4] + " +0000"
-                        dt = datetime.strptime(normalized, '%a, %d %b %Y %H:%M:%S %z')
-                        post_date = dt.date()
-                    except ValueError:
-                        pass
+    if days_since_publish < 0:
+        return False, f"Publish date is in the future ({post_date}). Skipping for safety."
 
-                if not post_date:
-                    print(f"Warning: Could not parse publish date: {publish_date}")
-                    # Skip this check if we can't parse the date
-                    post_date = None
+    if days_since_publish < MIN_DAYS_SINCE_PUBLISH:
+        remaining_days = MIN_DAYS_SINCE_PUBLISH - days_since_publish
+        return False, f"Post is only {days_since_publish} days old. Wait {remaining_days} more days."
 
-            elif isinstance(publish_date, datetime):
-                # Convert datetime to date (datetime is also a date subclass, so check first)
-                post_date = publish_date.date()
-            elif isinstance(publish_date, date):
-                # Already a date object
-                post_date = publish_date
-            else:
-                # Unknown format, skip this check
-                print(f"Warning: Unknown publish date format: {type(publish_date)}")
-                post_date = None
-
-            if post_date:
-                today = date.today()
-                days_since_publish = (today - post_date).days
-
-                if days_since_publish < MIN_DAYS_SINCE_PUBLISH:
-                    remaining_days = MIN_DAYS_SINCE_PUBLISH - days_since_publish
-                    return False, f"Post is only {days_since_publish} days old. Wait {remaining_days} more days."
-        except (ValueError, AttributeError) as e:
-            # If date format is invalid, continue with other checks
-            print(f"Warning: Error processing publish date {publish_date}: {e}")
-
-    # Rule 2: First check domain-specific log
+    # Rule 2: First check domain-specific log.
     domain_log_data = load_optimization_log_for_domain(domain_info)
+    domain_matches = find_matching_log_entries(domain_log_data, slug, target_url)
+    if domain_matches:
+        return evaluate_log_history(domain_matches, "domain log")
 
-    if slug in domain_log_data:
-        last_optimized_str = domain_log_data[slug].get('last_optimized', '')
-        if last_optimized_str:
-            try:
-                last_optimized = datetime.strptime(last_optimized_str, '%Y-%m-%d').date()
-                today = date.today()
-                days_since_last_opt = (today - last_optimized).days
-
-                if days_since_last_opt >= MIN_DAYS_BETWEEN_OPTIMIZATIONS:
-                    return True, f"Last optimized {days_since_last_opt} days ago (domain log)"
-                else:
-                    remaining_days = MIN_DAYS_BETWEEN_OPTIMIZATIONS - days_since_last_opt
-                    return False, f"Optimized {days_since_last_opt} days ago. Can optimize again in {remaining_days} days. (domain log)"
-            except ValueError:
-                # If date format is invalid, allow optimization
-                return True, "Invalid date in domain log, allowing optimization"
-
-    # Rule 3: If not found in domain log, check combined log
+    # Rule 3: If not found in domain log, check combined log.
     combined_log_data = load_all_domains_log()
+    combined_matches = find_matching_log_entries(combined_log_data, slug, target_url)
+    if combined_matches:
+        return evaluate_log_history(combined_matches, "combined log")
 
-    if slug in combined_log_data:
-        last_optimized_str = combined_log_data[slug].get('last_optimized', '')
-        if last_optimized_str:
-            try:
-                last_optimized = datetime.strptime(last_optimized_str, '%Y-%m-%d').date()
-                today = date.today()
-                days_since_last_opt = (today - last_optimized).days
-
-                if days_since_last_opt >= MIN_DAYS_BETWEEN_OPTIMIZATIONS:
-                    return True, f"Last optimized {days_since_last_opt} days ago (combined log)"
-                else:
-                    remaining_days = MIN_DAYS_BETWEEN_OPTIMIZATIONS - days_since_last_opt
-                    return False, f"Optimized {days_since_last_opt} days ago. Can optimize again in {remaining_days} days. (combined log)"
-            except ValueError:
-                # If date format is invalid, allow optimization
-                return True, "Invalid date in combined log, allowing optimization"
-
-    # Rule 4: If not found in any log
+    # Rule 4: If not found in any log, allow the first optimization.
     return True, "Never optimized before"
 
 def send_to_google_sheet(domain_info: dict, slug: str, url: str, last_optimized: str):
@@ -1872,7 +1907,7 @@ async def optimize_post(
         print(f"  Publish date: {publish_date}")
 
     # Check if we can optimize this slug
-    can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date)
+    can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date, target_url=url)
 
     if not can_optimize:
         print(f"  Skipping: {reason}")
@@ -1937,21 +1972,10 @@ async def optimize_post(
 
     # Extra guard: if lastmod was updated recently, skip even if logs are stale/missing.
     if original_lastmod:
-        lastmod_date = None
-        try:
-            if isinstance(original_lastmod, datetime):
-                lastmod_date = original_lastmod.date()
-            elif isinstance(original_lastmod, date):
-                lastmod_date = original_lastmod
-            elif isinstance(original_lastmod, str):
-                for date_format in ('%Y-%m-%d', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S'):
-                    try:
-                        lastmod_date = datetime.strptime(original_lastmod, date_format).date()
-                        break
-                    except ValueError:
-                        continue
-        except Exception:
-            lastmod_date = None
+        lastmod_date = parse_strict_date(original_lastmod)
+        if not lastmod_date:
+            print(f"  Skipping: unable to parse lastmod ({original_lastmod}).")
+            return False, "skipped"
 
         if lastmod_date:
             today = date.today()
@@ -2321,7 +2345,7 @@ async def main(args):
                 slug = extract_slug_from_url(url)
                 recommendation = lookup_recommended_action(url, recommendation_lookup)
 
-                can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date)
+                can_optimize, reason = can_optimize_slug(domain_info, slug, publish_date, target_url=url)
 
                 if not can_optimize:
                     print(f"  Skipping: {reason}")
