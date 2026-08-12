@@ -16,6 +16,7 @@ os.environ["BLOG_OPTIMIZATION_LOG_WEB_APP_SECRET"] = "test-optimization-log-secr
 from blog_optimizer_agent import (
     clean_optimized_content,
     candidate_csv_path_for_brand,
+    can_optimize_slug,
     get_optimization_strategy,
     load_recommendation_lookup,
     lookup_recommended_action,
@@ -175,6 +176,40 @@ lastmod: 2026-06-09
                 resolved = resolve_input_csv_for_brand("aspose", csv_dir=Path(tmpdir))
 
         self.assertEqual(resolved, legacy_path)
+
+    @patch("blog_optimizer_agent.load_optimization_log_for_domain", return_value={})
+    @patch("blog_optimizer_agent.load_all_domains_log", return_value={})
+    def test_can_optimize_rejects_unparseable_publish_date(self, _mock_all, _mock_domain):
+        ok, reason = can_optimize_slug(
+            {"full_domain": "blog.aspose.com"},
+            "example-post",
+            publish_date="not-a-real-date",
+            target_url="https://blog.aspose.com/example-post/",
+        )
+
+        self.assertFalse(ok)
+        self.assertIn("publish date", reason.lower())
+
+    @patch("blog_optimizer_agent.load_all_domains_log", return_value={})
+    @patch(
+        "blog_optimizer_agent.load_optimization_log_for_domain",
+        return_value={
+            "example-post": {
+                "last_optimized": "bad-date",
+                "url": "https://blog.aspose.com/example-post/",
+            }
+        },
+    )
+    def test_can_optimize_rejects_invalid_history_date(self, _mock_domain, _mock_all):
+        ok, reason = can_optimize_slug(
+            {"full_domain": "blog.aspose.com"},
+            "example-post",
+            publish_date="2024-10-31",
+            target_url="https://blog.aspose.com/example-post/",
+        )
+
+        self.assertFalse(ok)
+        self.assertIn("invalid date", reason.lower())
 
 
 if __name__ == "__main__":
