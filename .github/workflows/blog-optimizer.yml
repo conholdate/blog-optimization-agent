@@ -26,6 +26,15 @@ on:
           - "8"
           - "9"
           - "10"
+      min_days_between_optimizations:
+        description: "Manual minimum days between optimizations for this run"
+        type: choice
+        default: default
+        options:
+          - default
+          - "90"
+          - "180"
+          - "270"
       run_conholdate:
         description: "Run conholdate"
         type: boolean
@@ -279,6 +288,18 @@ jobs:
             limit_args=(--limit "$override")
           fi
 
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.min_days_between_optimizations }}" != "default" ]; then
+            min_days_override="${{ github.event.inputs.min_days_between_optimizations }}"
+
+            if ! [[ "$min_days_override" =~ ^[0-9]+$ ]]; then
+              echo "min_days_between_optimizations must be a whole number."
+              exit 1
+            fi
+
+            echo "Using manual minimum-days override: $min_days_override"
+            export MIN_DAYS_BETWEEN_OPTIMIZATIONS="$min_days_override"
+          fi
+
           python blog_optimizer_agent.py \
             --brand ${{ matrix.brand }} \
             --sourcepath "${{ github.workspace }}/${{ matrix.path }}" \
@@ -359,8 +380,8 @@ jobs:
           echo "public/" >> "${{ matrix.path }}/.git/info/exclude"
           echo ".hugo_build.lock" >> "${{ matrix.path }}/.git/info/exclude"
 
-          git -C "${{ matrix.path }}" config user.name "optimizer-agent"
-          git -C "${{ matrix.path }}" config user.email "optimizer-agent@users.noreply.github.com"
+          git -C "${{ matrix.path }}" config user.name "Farhan Raza"
+          git -C "${{ matrix.path }}" config user.email "farhan.raza@aspose.com"
 
           git -C "${{ matrix.path }}" add -A
 
@@ -383,8 +404,8 @@ jobs:
         if: ${{ steps.select.outputs.run_this == 'true' && steps.push_blog.outputs.push_ok == 'true' }}
         run: |
           if git status --porcelain logs | grep -q .; then
-            git config user.name "Blog Optimizer Agent"
-            git config user.email "optimizer-agent@users.noreply.github.com"
+            git config user.name "Farhan Raza"
+            git config user.email "farhan.raza@aspose.com"
 
             git add logs
 

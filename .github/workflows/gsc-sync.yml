@@ -215,8 +215,8 @@ jobs:
       - name: Commit CSV outputs
         if: steps.gate.outputs.run == 'true'
         run: |
-          git config user.name "Optimizer Agent"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "Farhan Raza"
+          git config user.email "farhan.raza@aspose.com"
 
           git add -f csv
           git status --short

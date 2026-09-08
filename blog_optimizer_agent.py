@@ -59,7 +59,11 @@ EMBEDDING_MODEL = os.getenv("PROFESSIONALIZE_EMBEDDING_MODEL", "qwen3-embedding-
 print(f"Using model: {MODEL_NAME}")
 
 # Configuration
-MIN_DAYS_BETWEEN_OPTIMIZATIONS = 90  # 3 months
+try:
+    MIN_DAYS_BETWEEN_OPTIMIZATIONS = int(os.getenv("MIN_DAYS_BETWEEN_OPTIMIZATIONS", "300"))
+except ValueError:
+    print("ERROR: MIN_DAYS_BETWEEN_OPTIMIZATIONS must be a whole number.")
+    exit(1)
 MIN_DAYS_SINCE_PUBLISH = 180  # 6 months (approximately 180 days)
 LOG_DIR = "logs"
 LOG_FILE_COMBINED = "all_domains_log.csv"
