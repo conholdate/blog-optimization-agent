@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -279,6 +280,40 @@ def _has_real_errors(output: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Hugo build fallbacks
+# ---------------------------------------------------------------------------
+
+@contextmanager
+def _temporary_global_posts_fallback(repo_path: Path):
+    """Seed a minimal data file when a repo expects `site.Data.global_posts`.
+
+    Some brand repos reference `site.Data.global_posts` directly and will fail
+    with `index of untyped nil` if the data file is absent.  Creating a tiny
+    temporary fallback keeps validation resilient without persisting any repo
+    changes.
+    """
+    data_dir = repo_path / "data"
+    fallback_file = data_dir / "global_posts.json"
+    created = False
+
+    if not fallback_file.exists():
+        data_dir.mkdir(parents=True, exist_ok=True)
+        fallback_file.write_text("{}", encoding="utf-8")
+        created = True
+
+    try:
+        yield
+    finally:
+        if created and fallback_file.exists():
+            fallback_file.unlink()
+            try:
+                if not any(data_dir.iterdir()):
+                    data_dir.rmdir()
+            except OSError:
+                pass
+
+
+# ---------------------------------------------------------------------------
 # Issue parsing and logging
 # ---------------------------------------------------------------------------
 
@@ -462,23 +497,24 @@ def run_hugo_build(repo_path: Path) -> subprocess.CompletedProcess[str]:
 
         print(f"Running command: {' '.join(cmd)}")
 
-        try:
-            return subprocess.run(
-                cmd,
-                cwd=repo_path,
-                check=False,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                timeout=2400,
-            )
+        with _temporary_global_posts_fallback(repo_path):
+            try:
+                return subprocess.run(
+                    cmd,
+                    cwd=repo_path,
+                    check=False,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    timeout=2400,
+                )
 
-        except subprocess.TimeoutExpired:
-            return subprocess.CompletedProcess(
-                args=cmd,
-                returncode=124,
-                stdout="Hugo build timed out after 10 minutes.",
-            )
+            except subprocess.TimeoutExpired:
+                return subprocess.CompletedProcess(
+                    args=cmd,
+                    returncode=124,
+                    stdout="Hugo build timed out after 10 minutes.",
+                )
 
 
 # ---------------------------------------------------------------------------

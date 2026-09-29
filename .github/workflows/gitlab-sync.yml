@@ -33,8 +33,8 @@ jobs:
           git fetch gitlab main
           if git rev-parse --verify gitlab/main >/dev/null 2>&1; then
             if ! git merge-base --is-ancestor gitlab/main HEAD; then
-              echo "GitLab main has diverged and protected branches do not allow force-push."
-              echo "Resolve the divergence on GitLab or push to an unprotected mirror branch."
+              echo "GitLab main has diverged or is protected."
+              echo "Reconcile GitLab main with GitHub main, then rerun the sync."
               exit 1
             fi
           fi

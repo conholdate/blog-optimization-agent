@@ -2,7 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from hugo_build_validator import detect_hugo_version, normalize_version, parse_hugo_build_issues
+from hugo_build_validator import (
+    detect_hugo_version,
+    normalize_version,
+    parse_hugo_build_issues,
+    _temporary_global_posts_fallback,
+)
 
 
 class HugoBuildValidatorTests(unittest.TestCase):
@@ -52,6 +57,15 @@ HUGO_VERSION = "0.121.2"
 
         self.assertEqual(issues[0].markdown_file, "content/total/post/index.md")
         self.assertEqual(issues[0].line_number, "7")
+
+    def test_temporary_global_posts_fallback_is_removed_after_use(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+
+            with _temporary_global_posts_fallback(repo):
+                self.assertTrue((repo / "data" / "global_posts.json").exists())
+
+            self.assertFalse((repo / "data" / "global_posts.json").exists())
 
 
 if __name__ == "__main__":
