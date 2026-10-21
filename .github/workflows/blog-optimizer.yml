@@ -47,10 +47,10 @@ on:
         description: "Run aspose"
         type: boolean
         default: true
-      # run_aspose_cloud:
-      #   description: "Run aspose-cloud"
-      #   type: boolean
-      #   default: true
+      run_aspose_cloud:
+        description: "Run aspose-cloud"
+        type: boolean
+        default: true
       # run_groupdocs:
       #   description: "Run groupdocs"
       #   type: boolean
@@ -90,11 +90,11 @@ jobs:
             path: aspose-blog
             default_branch: master
             input_name: run_aspose          
-          # - brand: aspose-cloud
-          #   repo: aspose-cloud/aspose-cloud-blog
-          #   path: aspose-cloud-blog
-          #   default_branch: master
-          #   input_name: run_aspose_cloud
+          - brand: aspose-cloud
+            repo: aspose-cloud/aspose-cloud-blog
+            path: aspose-cloud-blog
+            default_branch: master
+            input_name: run_aspose_cloud
           # - brand: groupdocs
           #   repo: groupdocs/groupdocs-blog
           #   path: groupdocs-blog
