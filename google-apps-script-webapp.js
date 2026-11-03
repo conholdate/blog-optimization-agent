@@ -162,19 +162,10 @@ function toBoolean(value, defaultValue) {
 function handleImportData(data) {
   try {
     const { spreadsheetId, rows } = data;
+    const clearExisting = toBoolean(data.clearExisting, true);
 
     if (!spreadsheetId) return createResponse(false, "Missing spreadsheetId");
     if (!rows || !Array.isArray(rows)) return createResponse(false, "Missing or invalid rows data");
-    if (rows.length === 0) {
-      return createResponse(true, {
-        message: "No rows to import",
-        rows_imported: 0,
-        total_rows_in_sheet: 0,
-        sheet_name: resolveSheetName(data, rows),
-        spreadsheet_url: SpreadsheetApp.openById(spreadsheetId).getUrl(),
-        clear_existing: true
-      });
-    }
 
     const sheetName = resolveSheetName(data, rows);
     const ss = SpreadsheetApp.openById(spreadsheetId);
@@ -183,18 +174,34 @@ function handleImportData(data) {
       sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     }
 
-    const headers = resolveHeaders(sheet, rows);
+    const headers = rows.length > 0 ? resolveHeaders(sheet, rows) : resolveHeaders(sheet, []);
 
-    writeHeaderRow(sheet, headers);
+    if (headers.length > 0 && (clearExisting || sheet.getLastRow() === 0)) {
+      writeHeaderRow(sheet, headers);
+    } else if (headers.length > 0) {
+      ensureSheetWidth(sheet, headers.length);
+    }
 
-    if (sheet.getLastRow() > 1) {
+    if (clearExisting && sheet.getLastRow() > 1) {
       ensureSheetWidth(sheet, headers.length);
       sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).clearContent();
     }
 
+    if (rows.length === 0) {
+      return createResponse(true, {
+        message: clearExisting ? `Cleared rows in ${sheetName}` : `No rows to import for ${sheetName}`,
+        rows_imported: 0,
+        total_rows_in_sheet: Math.max(sheet.getLastRow() - 1, 0),
+        sheet_name: sheetName,
+        spreadsheet_url: ss.getUrl(),
+        clear_existing: clearExisting
+      });
+    }
+
     const sheetData = buildSheetData(rows, headers);
     if (sheetData.length > 0) {
-      sheet.getRange(2, 1, sheetData.length, headers.length).setValues(sheetData);
+      const startRow = clearExisting ? 2 : Math.max(sheet.getLastRow() + 1, 2);
+      sheet.getRange(startRow, 1, sheetData.length, headers.length).setValues(sheetData);
     }
 
     const totalRowsInSheet = Math.max(sheet.getLastRow() - 1, 0);
@@ -204,7 +211,7 @@ function handleImportData(data) {
       total_rows_in_sheet: totalRowsInSheet,
       sheet_name: sheetName,
       spreadsheet_url: ss.getUrl(),
-      clear_existing: true
+      clear_existing: clearExisting
     });
   } catch (error) {
     console.error("Import error:", error);

@@ -750,7 +750,8 @@ def main():
                 break
             final_upload_result = result
     else:
-        print("  No candidate rows to upload.")
+        print("  No candidate rows to upload; clearing the target sheet.")
+        upload_success, final_upload_result = send_to_google_sheets([], is_first_chunk=True)
 
     # 11) Summary
     print("\n" + "=" * 70)
@@ -766,6 +767,8 @@ def main():
             print("  Upload failed partway through.")
     print("=" * 70)
 
+    return 0 if upload_success else 1
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

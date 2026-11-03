@@ -27,4 +27,5 @@ from gsc_aspose_com import main
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    sys.exit(main())
