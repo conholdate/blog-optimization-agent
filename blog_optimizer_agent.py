@@ -184,6 +184,78 @@ def derive_family_name_from_md(md_file_path: Path) -> str:
         return None
 
 
+def extract_front_matter_metadata(md_file_path: Path) -> dict:
+    """Read YAML front matter from a markdown file."""
+    try:
+        with open(md_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        match = re.match(r"^---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
+        if not match:
+            return {}
+
+        return yaml.safe_load(match.group(1)) or {}
+    except Exception as e:
+        print(f"Warning: Unable to read metadata from {md_file_path}: {e}")
+        return {}
+
+
+def normalize_title_for_duplicate_check(title: str) -> str:
+    """Normalize titles so near-identical spacing/case compares cleanly."""
+    return re.sub(r"\s+", " ", str(title or "").strip()).casefold()
+
+
+def audit_duplicate_titles(source_path: str, brand_config: dict | None = None) -> list[dict]:
+    """
+    Find duplicate article titles within the target content tree.
+    Returns grouped duplicate records for reporting.
+    """
+    source_dir = Path(source_path)
+    if not source_dir.exists():
+        return []
+
+    content_root = None
+    if brand_config and brand_config.get("content_folder"):
+        content_root = source_dir / "content" / brand_config["content_folder"]
+
+    search_root = content_root if content_root and content_root.exists() else source_dir / "content"
+    if not search_root.exists():
+        search_root = source_dir
+
+    title_map: dict[str, list[dict]] = {}
+    for md_file in search_root.rglob("index.md"):
+        metadata = extract_front_matter_metadata(md_file)
+        title = metadata.get("title")
+        if not title:
+            continue
+
+        key = normalize_title_for_duplicate_check(title)
+        if not key:
+            continue
+
+        title_map.setdefault(key, []).append(
+            {
+                "title": str(title).strip(),
+                "path": str(md_file),
+                "url": str(metadata.get("url", "")).strip(),
+                "date": str(metadata.get("date", "")).strip(),
+            }
+        )
+
+    duplicates = []
+    for records in title_map.values():
+        if len(records) > 1:
+            duplicates.append(
+                {
+                    "title": records[0]["title"],
+                    "count": len(records),
+                    "records": records,
+                }
+            )
+
+    return duplicates
+
+
 PLATFORM_OPTIONS = [".NET", "Java", "Python", "Node.js", "C++", "PHP", "Android", "Go", "Ruby", "All"]
 _platform_detection_cache = {}
 
@@ -2220,6 +2292,17 @@ async def main(args):
     if args.brand:
         print(f"Brand: {args.brand}")
     print("="*60)
+
+    duplicate_titles = audit_duplicate_titles(args.sourcepath, BRAND_CONFIG.get(args.brand) if args.brand else None)
+    if duplicate_titles:
+        print("\nDuplicate title audit:")
+        for item in duplicate_titles:
+            print(f"  - '{item['title']}' appears {item['count']} times")
+            for record in item["records"]:
+                print(f"    • {record['path']}")
+        print("  Recommendation: rename one of each duplicate pair, and update `seoTitle`/`summary` so the posts are clearly distinguishable.")
+    else:
+        print("\nDuplicate title audit: no duplicate titles found.")
 
     # Ensure csv directory exists
     csv_dir = Path("csv")
