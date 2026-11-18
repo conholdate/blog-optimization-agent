@@ -97,6 +97,30 @@ After
         self.assertNotIn("&lt; gist", cleaned)
         self.assertNotIn("&gt;}}", cleaned)
 
+    def test_normalizes_bare_and_escaped_shortcodes(self):
+        content = """---
+title: Example
+lastmod: 2026-06-09
+---
+
+{{ figure align=center src="images/stl-viewer-online.jpg" alt="STL Viewer Online" }}
+{{&lt; img_a_blank "[https://products.conholdate.app/viewer/stl](https://products.conholdate.app/viewer/stl)" "images/online-free-stl-viewer.png" "Free Online STL Viewer" "Free Online STL Viewer" &gt;}}
+"""
+
+        cleaned = clean_optimized_content(content)
+
+        self.assertIn(
+            '{{< figure align=center src="images/stl-viewer-online.jpg" alt="STL Viewer Online" >}}',
+            cleaned,
+        )
+        self.assertIn(
+            '{{< img_a_blank "[https://products.conholdate.app/viewer/stl](https://products.conholdate.app/viewer/stl)" "images/online-free-stl-viewer.png" "Free Online STL Viewer" "Free Online STL Viewer" >}}',
+            cleaned,
+        )
+        self.assertNotIn('{{ figure', cleaned)
+        self.assertNotIn('&lt;', cleaned)
+        self.assertNotIn('&gt;}}', cleaned)
+
     def test_still_escapes_html_inside_plain_hugo_expression(self):
         content = """---
 title: Example
