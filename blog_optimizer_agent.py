@@ -1125,6 +1125,62 @@ def send_api_reports_by_family(status: str, metrics: dict, website: str, env: st
 # ----------------------------------------------------
 # 5. Cleanup Functions
 # ----------------------------------------------------
+def normalize_hugo_shortcodes(content: str) -> str:
+    """
+    Normalize common Hugo shortcode mistakes produced by the LLM.
+
+    Supports:
+    - HTML-escaped shortcode delimiters: {{&lt; ... &gt;}}
+    - Bare shortcode calls without angle delimiters: {{ figure ... }}
+    - Smart quotes and escaped underscores inside shortcode arguments
+    """
+    if not content:
+        return content
+
+    # First, repair HTML-escaped shortcode delimiters.
+    content = re.sub(r"\{\{\s*&lt;\s*", "{{< ", content)
+    content = re.sub(r"\s*&gt;\s*\}\}", " >}}", content)
+    content = re.sub(r"\{\{\s*%\s*", "{{% ", content)
+    content = re.sub(r"\s*%\s*\}\}", " %}}", content)
+
+    shortcode_prefixes = (
+        "figure",
+        "img_a_blank",
+        "gist",
+        "youtube",
+        "vimeo",
+        "tweet",
+        "instagram",
+        "x",
+        "twitter",
+    )
+
+    def _normalize_shortcode_match(match: re.Match) -> str:
+        inner = " ".join(match.group(1).split())
+        if not inner:
+            return match.group(0)
+
+        stripped = inner.lstrip()
+        if stripped.startswith(("<", "%", ".", "$")):
+            return match.group(0)
+
+        if re.match(r"^(if|else|end|with|range|define|block|template|partial|printf|delimit)\b", stripped):
+            return match.group(0)
+
+        if not stripped.lower().startswith(shortcode_prefixes):
+            return match.group(0)
+
+        # Normalize common punctuation issues inside shortcode arguments.
+        stripped = stripped.replace(r"\_", "_")
+        stripped = stripped.replace("“", '"').replace("”", '"')
+        stripped = stripped.replace("‘", "'").replace("’", "'")
+
+        return f"{{{{< {stripped} >}}}}"
+
+    content = re.sub(r"\{\{(.*?)\}\}", _normalize_shortcode_match, content, flags=re.DOTALL)
+    return content
+
+
 def clean_optimized_content(content: str, original_content: str = "") -> str:
     """Clean up common formatting issues in optimized content."""
     if not content:
@@ -1229,7 +1285,10 @@ def clean_optimized_content(content: str, original_content: str = "") -> str:
     if content.endswith('```'):
         content = content[:-3].rstrip()
 
-    # 11. Fix HTML tags that leaked into Hugo template expressions.
+    # 11. Normalize Hugo shortcodes that the model may have broken.
+    content = normalize_hugo_shortcodes(content)
+
+    # 12. Fix HTML tags that leaked into Hugo template expressions.
     # Hugo shortcodes use `{{< ... >}}` / `{{% ... %}}` delimiters and must be
     # preserved exactly. Only escape bare < and > inside plain `{{ ... }}`
     # template expressions.
