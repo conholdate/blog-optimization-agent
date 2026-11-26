@@ -22,6 +22,8 @@ from urllib.parse import urlsplit, urlunsplit
 # For API call
 import requests
 
+from optimization_events import append_optimization_event
+
 # Suppress the XML warning
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
@@ -643,7 +645,7 @@ def evaluate_log_history(matches: list, source_label: str):
 
     return True, f"Last optimized {days_since_last_opt} days ago ({source_label})"
 
-def update_optimization_log(domain_info: dict, slug: str, url: str):
+def update_optimization_log(domain_info: dict, slug: str, url: str, recommended_action: str = ""):
     """Update the optimization log for a specific slug and domain."""
     # Update domain-specific log
     log_data = load_optimization_log_for_domain(domain_info)
@@ -656,6 +658,17 @@ def update_optimization_log(domain_info: dict, slug: str, url: str):
 
     # Update combined log
     save_to_combined_log(domain_info, slug, url, today_str)
+
+    # Keep every optimization as its own event for before/after metrics
+    log_file_path, _ = get_log_file_path(domain_info)
+    append_optimization_event(
+        log_file_path,
+        url=url,
+        slug=slug,
+        domain=domain_info['full_domain'],
+        optimized_on=today_str,
+        recommended_action=recommended_action,
+    )
 
     print(f"Updated log for '{slug}' from {domain_info['full_domain']}: {today_str}")
 
@@ -2272,7 +2285,7 @@ async def optimize_post(
         f.write(sanitized_content)
 
     # Update optimization log for this domain with publish date
-    update_optimization_log(domain_info, slug, url)
+    update_optimization_log(domain_info, slug, url, recommended_action=strategy.get("code", ""))
 
     print(f"  Optimized and saved to: {md_file_path}")
 
