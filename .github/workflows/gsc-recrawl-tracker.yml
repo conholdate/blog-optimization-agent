@@ -1,0 +1,65 @@
+name: GSC Sitemap Submit & Recrawl Tracker
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # Daily at 06:00 UTC, after the blogs' 03:00 UTC deploys
+  workflow_dispatch:
+
+concurrency:
+  group: gsc-recrawl-tracker
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests google-api-python-client google-auth google-auth-oauthlib
+
+      - name: Write Google OAuth files
+        env:
+          GSC_CREDENTIALS_JSON: ${{ secrets.GSC_CREDENTIALS_JSON }}
+        run: |
+          [ -n "$GSC_CREDENTIALS_JSON" ] || { echo "Set GSC_CREDENTIALS_JSON secret"; exit 1; }
+          printf '%s' "$GSC_CREDENTIALS_JSON" > credentials.json
+
+      - name: Check deploys, submit sitemaps, inspect URLs
+        run: python gsc_recrawl_tracker.py
+
+      - name: Remove Google OAuth files
+        if: always()
+        run: rm -f credentials.json
+
+      - name: Commit recrawl status
+        run: |
+          if ! git status --porcelain metrics/recrawl_status.csv | grep -q .; then
+            echo "No recrawl status changes."
+            exit 0
+          fi
+          git config user.name "Farhan Raza"
+          git config user.email "farhan.raza@aspose.com"
+          git add metrics/recrawl_status.csv
+          git commit -m "Update recrawl status"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Failed to push recrawl status after retries."
+          exit 1
