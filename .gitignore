@@ -13,3 +13,5 @@ build/
 dist/
 wheels/
 .venv
+site/data/
+_site/

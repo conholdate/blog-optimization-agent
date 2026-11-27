@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog performance metrics</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f4f2;
+  --surface-1: #fcfcfb;
+  --border: #e2e1dd;
+  --grid: #ebeae6;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #77766f;
+  --accent: #2a78d6;
+  --stream-optimized: #2a78d6;
+  --stream-new: #eb6834;
+  --stream-general: #1baf7a;
+  --div-pos: #2a78d6;
+  --div-neg: #e34948;
+  --div-mid: #f0efec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #111110;
+    --surface-1: #1a1a19;
+    --border: #2e2e2b;
+    --grid: #262624;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #94938b;
+    --accent: #3987e5;
+    --stream-optimized: #3987e5;
+    --stream-new: #d95926;
+    --stream-general: #199e70;
+    --div-pos: #3987e5;
+    --div-neg: #e66767;
+    --div-mid: #383835;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110;
+  --surface-1: #1a1a19;
+  --border: #2e2e2b;
+  --grid: #262624;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #94938b;
+  --accent: #3987e5;
+  --stream-optimized: #3987e5;
+  --stream-new: #d95926;
+  --stream-general: #199e70;
+  --div-pos: #3987e5;
+  --div-neg: #e66767;
+  --div-mid: #383835;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+p.lede, p.note { color: var(--text-secondary); margin: 0 0 16px; }
+p.note { font-size: 13px; }
+a { color: var(--accent); }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 16px 0 20px; }
+.filters label { display: flex; flex-direction: column; font-size: 12px; color: var(--text-secondary); gap: 4px; }
+select, input[type="search"] {
+  font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; min-width: 180px;
+}
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.tile .label { font-size: 12px; color: var(--text-secondary); }
+.tile .value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .sub { font-size: 12px; color: var(--text-muted); }
+.multiples { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.chart-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.chart-title .key { width: 14px; height: 2px; border-radius: 1px; }
+.chart-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.chart { position: relative; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tooltip {
+  position: absolute; pointer-events: none; z-index: 5; display: none;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); white-space: nowrap;
+}
+.tooltip strong { display: block; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tooltip .muted { color: var(--text-secondary); }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+th { font-size: 12px; color: var(--text-secondary); font-weight: 600; position: sticky; top: 0; background: var(--surface-1); }
+th:first-child, td:first-child, th.left, td.left { text-align: left; }
+td.url { max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
+.pos { color: var(--div-pos); }
+.neg { color: var(--div-neg); }
+.badge { font-size: 11px; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin: 4px 0 8px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.empty { color: var(--text-muted); padding: 24px 0; text-align: center; }
+details summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Blog performance metrics</h1>
+  <p class="lede">Search Console clicks, impressions and position for posts improved by the Blog Optimizer Agent, posts written by the Blog Generator Agent, and all other posts.</p>
+
+  <div class="filters">
+    <label>Blog
+      <select id="domain"><option value="">All blogs</option></select>
+    </label>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>Weekly clicks by stream, last 6 months</h2>
+    <p class="note">Each post is counted in one stream: optimized from the week after its first optimization, new from its publish week if the Blog Generator Agent wrote it, otherwise general. Each chart has its own scale.</p>
+    <div class="multiples" id="streams"></div>
+  </section>
+
+  <section class="card">
+    <h2>Optimization results compared with the site</h2>
+    <p class="note">Change in clicks over the 8 weeks after optimization versus the 8 weeks before, for posts optimized each month, after removing the site-wide change over the same weeks. Above zero means the optimized posts did better than the blog as a whole.</p>
+    <div class="legend">
+      <span><i style="background:var(--div-pos)"></i>Better than site</span>
+      <span><i style="background:var(--div-neg)"></i>Worse than site</span>
+    </div>
+    <div class="chart" id="monthly"></div>
+    <details><summary>Show as table</summary><div class="table-wrap" id="monthly-table"></div></details>
+  </section>
+
+  <section class="card">
+    <h2>Every optimization</h2>
+    <p class="note">One row per optimization; a post optimized twice has two rows. Before and after are the 8 weeks on either side of the optimization date; the after columns stay blank until those 8 weeks are complete. Google recrawl shows how long Google took to crawl the page after the optimized version went live; "by" means tracking started after the recrawl, so only the latest crawl date is known. Single posts often have very few clicks, so read individual percentages with care.</p>
+    <div class="filters" style="margin:8px 0">
+      <label>Search URL<input type="search" id="event-search" placeholder="e.g. pdf"></label>
+    </div>
+    <div class="table-wrap" id="events"></div>
+  </section>
+
+  <section class="card">
+    <h2>New posts: first 8 weeks after publishing</h2>
+    <p class="note">Posts written by the Blog Generator Agent, grouped by publish month. Each post counts once its first 8 weeks are complete.</p>
+    <div class="table-wrap" id="cohorts"></div>
+    <details><summary>Show every new post</summary><div class="table-wrap" id="new-posts"></div></details>
+  </section>
+
+  <p class="note" id="updated"></p>
+</main>
+
+<script>
+const WINDOW = 56; // days before/after an optimization, and after publishing a new post
+const state = { domain: "", search: "" };
+let DATA = null;
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') quoted = false;
+      else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (c !== "\r") field += c;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const [header, ...body] = rows;
+  return body.filter(r => r.length === header.length).map(r => Object.fromEntries(header.map((h, i) => [h, r[i]])));
+}
+
+const num = v => (v === "" || v == null ? null : Number(v));
+const fmt = n => (n == null ? "–" : Math.round(n).toLocaleString());
+const fmtPos = n => (n == null || Number.isNaN(n) ? "–" : n.toFixed(1));
+const fmtPct = n => (n == null || !Number.isFinite(n) ? "–" : `${n > 0 ? "+" : ""}${n.toFixed(1)}%`);
+const shortDate = s => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const monthLabel = m => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+
+function el(tag, attrs = {}, text) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text != null) node.textContent = text;
+  return node;
+}
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+
+function tooltipRows(tip, title, rows) {
+  tip.replaceChildren();
+  tip.appendChild(el("div", { class: "muted" }, title));
+  for (const [label, value] of rows) {
+    const line = el("div");
+    line.appendChild(el("strong", {}, value));
+    line.appendChild(el("span", { class: "muted" }, label));
+    tip.appendChild(line);
+  }
+}
+
+function placeTooltip(tip, container, x, y) {
+  tip.style.display = "block";
+  const box = container.getBoundingClientRect();
+  const w = tip.offsetWidth;
+  const left = x + 14 + w > box.width ? x - w - 14 : x + 14;
+  tip.style.left = `${Math.max(0, left)}px`;
+  tip.style.top = `${Math.max(0, y - 20)}px`;
+}
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v));
+  return [1, 2, 2.5, 5, 10].map(m => m * p).find(m => m >= v);
+}
+
+// ---------- aggregation ----------
+
+function filtered(rows) {
+  return state.domain ? rows.filter(r => r.domain === state.domain) : rows;
+}
+
+// Clicks after vs. what they would have been had the post followed the site trend.
+function aggregateEvents(rows, w) {
+  let pre = 0, post = 0, expected = 0, imprPre = 0, imprPost = 0, n = 0;
+  const posChanges = [];
+  for (const r of rows) {
+    const cPost = num(r[`clicks_post_${w}d`]);
+    if (cPost == null || r.overlapping_event === "yes") continue;
+    const cPre = num(r[`clicks_pre_${w}d`]);
+    const site = num(r[`site_clicks_change_${w}d_pct`]);
+    const siteRatio = site == null ? 1 : 1 + site / 100;
+    pre += cPre; post += cPost; expected += cPre * siteRatio;
+    imprPre += num(r[`impressions_pre_${w}d`]); imprPost += num(r[`impressions_post_${w}d`]);
+    const dp = num(r[`position_change_${w}d`]);
+    if (dp != null) posChanges.push(dp);
+    n++;
+  }
+  posChanges.sort((a, b) => a - b);
+  const median = posChanges.length ? posChanges[Math.floor(posChanges.length / 2)] : null;
+  return {
+    n, pre, post, expected, imprPre, imprPost, medianPositionChange: median,
+    change: pre ? (post / pre - 1) * 100 : null,
+    vsSite: expected ? (post / expected - 1) * 100 : null,
+  };
+}
+
+// ---------- renderers ----------
+
+function renderTiles() {
+  const w = WINDOW;
+  const events = filtered(DATA.events);
+  const agg = aggregateEvents(events, w);
+  const posts = filtered(DATA.newPosts);
+  const ready8 = posts.filter(p => p.clicks_first_56d !== "");
+  const avg8 = ready8.length ? ready8.reduce((s, p) => s + num(p.clicks_first_56d), 0) / ready8.length : null;
+  const crawl = events.map(e => DATA.recrawl.get(e.event_id)).filter(Boolean);
+  const exactDays = crawl.filter(c => c.days_to_recrawl !== "").map(c => num(c.days_to_recrawl)).sort((a, b) => a - b);
+  const medianDays = exactDays.length ? exactDays[Math.floor(exactDays.length / 2)] : null;
+  const recrawled = crawl.filter(c => c.status === "recrawled").length;
+  const waiting = crawl.filter(c => c.status === "waiting_recrawl" || c.status === "waiting_deploy").length;
+  const tiles = [
+    ["Optimizations logged", fmt(events.length), `${agg.n} with 8 complete weeks after`],
+    ["Clicks, 8 weeks before → after", `${fmt(agg.pre)} → ${fmt(agg.post)}`, `${fmtPct(agg.change)} raw change`],
+    ["Clicks compared with site", fmtPct(agg.vsSite), `Site trend alone predicted ${fmt(agg.expected)}`],
+    ["Impressions, 8 weeks before → after", `${fmt(agg.imprPre)} → ${fmt(agg.imprPost)}`, `Median position change ${agg.medianPositionChange == null ? "–" : (agg.medianPositionChange > 0 ? "+" : "") + agg.medianPositionChange.toFixed(1)} (lower is better)`],
+    ["Days until Google recrawled", medianDays == null ? "–" : `${medianDays} days`,
+      `Median of ${exactDays.length} observed recrawls · ${fmt(recrawled)} recrawled, ${fmt(waiting)} waiting`],
+    ["New posts tracked", fmt(posts.length), `Average ${avg8 == null ? "–" : avg8.toFixed(1)} clicks in first 8 weeks`],
+  ];
+  const box = document.getElementById("tiles");
+  box.replaceChildren();
+  for (const [label, value, sub] of tiles) {
+    const t = el("div", { class: "tile" });
+    t.append(el("div", { class: "label" }, label), el("div", { class: "value" }, value), el("div", { class: "sub" }, sub));
+    box.appendChild(t);
+  }
+}
+
+function lineChart(container, points, color, label) {
+  const W = 340, H = 170, m = { t: 10, r: 10, b: 22, l: 40 };
+  const max = niceMax(Math.max(0, ...points.map(p => p.v)));
+  const x = i => m.l + (points.length < 2 ? 0 : (i / (points.length - 1)) * (W - m.l - m.r));
+  const y = v => H - m.b - (v / max) * (H - m.t - m.b);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${label} weekly clicks` });
+  for (const t of max < 4 ? [0, max] : [0, max / 2, max]) {
+    svg.appendChild(svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: "var(--grid)", "stroke-width": 1 }));
+    const tx = svgEl("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" });
+    tx.textContent = fmt(t);
+    svg.appendChild(tx);
+  }
+  if (points.length) {
+    for (const i of [0, points.length - 1]) {
+      const tx = svgEl("text", { x: x(i), y: H - 6, "text-anchor": i ? "end" : "start" });
+      tx.textContent = shortDate(points[i].week);
+      svg.appendChild(tx);
+    }
+    const d = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+    svg.appendChild(svgEl("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  }
+  const hair = svgEl("line", { y1: m.t, y2: H - m.b, stroke: "var(--text-muted)", "stroke-width": 1, visibility: "hidden" });
+  const dot = svgEl("circle", { r: 4, fill: color, stroke: "var(--surface-1)", "stroke-width": 2, visibility: "hidden" });
+  svg.append(hair, dot);
+  const hit = svgEl("rect", { x: m.l, y: 0, width: W - m.l - m.r, height: H - m.b, fill: "transparent", tabindex: 0 });
+  svg.appendChild(hit);
+
+  const wrap = el("div", { class: "chart" });
+  const tip = el("div", { class: "tooltip" });
+  wrap.append(svg, tip);
+  container.appendChild(wrap);
+
+  const show = i => {
+    const p = points[i];
+    hair.setAttribute("x1", x(i)); hair.setAttribute("x2", x(i)); hair.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(p.v)); dot.setAttribute("visibility", "visible");
+    tooltipRows(tip, `Week of ${shortDate(p.week)}`, [[" clicks", fmt(p.v)], [" impressions", fmt(p.impr)], [" pages with impressions", fmt(p.pages)]]);
+    const scale = wrap.clientWidth / W;
+    placeTooltip(tip, wrap, x(i) * scale, y(p.v) * scale);
+  };
+  const hide = () => { tip.style.display = "none"; hair.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
+  hit.addEventListener("pointermove", e => {
+    if (!points.length) return;
+    const box = svg.getBoundingClientRect();
+    const sx = ((e.clientX - box.left) / box.width) * W;
+    const i = Math.round(((sx - m.l) / (W - m.l - m.r)) * (points.length - 1));
+    show(Math.max(0, Math.min(points.length - 1, i)));
+  });
+  hit.addEventListener("pointerleave", hide);
+  hit.addEventListener("focus", () => points.length && show(points.length - 1));
+  hit.addEventListener("blur", hide);
+}
+
+function renderStreams() {
+  const rows = filtered(DATA.streams);
+  const box = document.getElementById("streams");
+  box.replaceChildren();
+  const streams = [
+    ["optimized", "Optimized posts", "var(--stream-optimized)"],
+    ["new", "New posts", "var(--stream-new)"],
+    ["general", "General posts", "var(--stream-general)"],
+  ];
+  for (const [key, label, color] of streams) {
+    const byWeek = new Map();
+    for (const r of rows.filter(r => r.stream === key)) {
+      const cur = byWeek.get(r.week_start) || { week: r.week_start, v: 0, impr: 0, pages: 0 };
+      cur.v += num(r.clicks); cur.impr += num(r.impressions); cur.pages += num(r.pages);
+      byWeek.set(r.week_start, cur);
+    }
+    const points = [...byWeek.values()].sort((a, b) => a.week.localeCompare(b.week));
+    const cell = el("div");
+    const title = el("div", { class: "chart-title" });
+    const key_ = el("span", { class: "key" }); key_.style.background = color;
+    title.append(key_, document.createTextNode(label));
+    const last = points[points.length - 1];
+    cell.append(title, el("div", { class: "chart-sub" }, last ? `${fmt(last.v)} clicks in the latest week` : "No data yet"));
+    lineChart(cell, points, color, label);
+    box.appendChild(cell);
+  }
+}
+
+function monthlyResults() {
+  const w = WINDOW;
+  const groups = new Map();
+  for (const r of filtered(DATA.events)) {
+    const m = r.optimized_on.slice(0, 7);
+    if (!groups.has(m)) groups.set(m, []);
+    groups.get(m).push(r);
+  }
+  return [...groups.entries()].sort().map(([month, rows]) => ({ month, total: rows.length, ...aggregateEvents(rows, w) }));
+}
+
+function renderMonthly() {
+  const data = monthlyResults().filter(d => d.n > 0);
+  const box = document.getElementById("monthly");
+  box.replaceChildren();
+  if (!data.length) { box.appendChild(el("div", { class: "empty" }, "No optimizations have a complete after-window yet.")); renderMonthlyTable([]); return; }
+
+  const W = 720, H = 250, m = { t: 16, r: 10, b: 42, l: 48 };
+  const ext = niceMax(Math.max(10, ...data.map(d => Math.abs(d.vsSite ?? 0))));
+  const y = v => m.t + ((ext - v) / (2 * ext)) * (H - m.t - m.b);
+  const band = (W - m.l - m.r) / data.length;
+  const barW = Math.min(48, band - 8);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Clicks compared with site, by optimization month" });
+  for (const t of [-ext, -ext / 2, 0, ext / 2, ext]) {
+    svg.appendChild(svgEl("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? "var(--text-muted)" : "var(--grid)", "stroke-width": 1 }));
+    const tx = svgEl("text", { x: m.l - 6, y: y(t) + 4, "text-anchor": "end" });
+    tx.textContent = `${t > 0 ? "+" : ""}${t}%`;
+    svg.appendChild(tx);
+  }
+  const wrap = el("div", { class: "chart" });
+  const tip = el("div", { class: "tooltip" });
+  data.forEach((d, i) => {
+    const cx = m.l + band * i + band / 2;
+    const v = d.vsSite ?? 0;
+    const top = Math.min(y(v), y(0)), h = Math.max(1, Math.abs(y(v) - y(0)));
+    const color = v >= 0 ? "var(--div-pos)" : "var(--div-neg)";
+    const bar = svgEl("rect", { x: cx - barW / 2, y: top, width: barW, height: h, rx: 4, fill: color });
+    svg.appendChild(bar);
+    const lbl = svgEl("text", { x: cx, y: v >= 0 ? top - 4 : top + h + 12, "text-anchor": "middle" });
+    lbl.textContent = fmtPct(d.vsSite);
+    svg.appendChild(lbl);
+    const ml = svgEl("text", { x: cx, y: H - 8, "text-anchor": "middle" });
+    ml.textContent = monthLabel(d.month).replace(" 20", " ’");
+    svg.appendChild(ml);
+    const hit = svgEl("rect", { x: m.l + band * i, y: m.t, width: band, height: H - m.t - m.b, fill: "transparent", tabindex: 0 });
+    const show = () => {
+      bar.setAttribute("opacity", "0.8");
+      tooltipRows(tip, `${monthLabel(d.month)} · ${d.n} of ${d.total} optimizations measured`, [
+        [" vs site", fmtPct(d.vsSite)],
+        [" clicks before → after", `${fmt(d.pre)} → ${fmt(d.post)}`],
+        [" predicted by site trend", fmt(d.expected)],
+      ]);
+      const scale = wrap.clientWidth / W;
+      placeTooltip(tip, wrap, cx * scale, top * scale);
+    };
+    const hide = () => { bar.removeAttribute("opacity"); tip.style.display = "none"; };
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("focus", show);
+    hit.addEventListener("blur", hide);
+    svg.appendChild(hit);
+  });
+  wrap.append(svg, tip);
+  box.appendChild(wrap);
+  renderMonthlyTable(data);
+}
+
+function table(container, headers, rows) {
+  container.replaceChildren();
+  if (!rows.length) { container.appendChild(el("div", { class: "empty" }, "No rows")); return; }
+  const t = el("table"), thead = el("thead"), tr = el("tr");
+  headers.forEach(([label, cls]) => tr.appendChild(el("th", cls ? { class: cls } : {}, label)));
+  thead.appendChild(tr); t.appendChild(thead);
+  const tbody = el("tbody");
+  for (const r of rows) {
+    const row = el("tr");
+    r.forEach((cell, i) => {
+      const cls = [headers[i][1], cell && cell.cls].filter(Boolean).join(" ");
+      const td = el("td", cls ? { class: cls } : {});
+      if (cell && cell.href) {
+        const a = el("a", { href: cell.href, target: "_blank", rel: "noopener" }, cell.text);
+        td.appendChild(a); td.title = cell.text;
+      } else td.textContent = cell && typeof cell === "object" ? cell.text : cell;
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  }
+  t.appendChild(tbody);
+  container.appendChild(t);
+}
+
+const signed = (v, text) => ({ text, cls: v == null ? "" : v > 0 ? "pos" : v < 0 ? "neg" : "" });
+
+function renderMonthlyTable(data) {
+  table(document.getElementById("monthly-table"),
+    [["Month"], ["Optimizations"], ["Measured"], ["Clicks before"], ["Clicks after"], ["Raw change"], ["Site trend predicted"], ["Vs site"]],
+    data.map(d => [monthLabel(d.month), fmt(d.total), fmt(d.n), fmt(d.pre), fmt(d.post), signed(d.change, fmtPct(d.change)), fmt(d.expected), signed(d.vsSite, fmtPct(d.vsSite))]));
+}
+
+function recrawlLabel(c) {
+  if (!c) return "–";
+  if (c.status === "recrawled") return c.days_to_recrawl !== "" ? `after ${c.days_to_recrawl} days` : `by ${shortDate(c.recrawled_on)}`;
+  if (c.status === "waiting_deploy") return "not live yet";
+  if (c.status === "not_recrawled") return "not in 120 days";
+  return "waiting";
+}
+
+function renderEvents() {
+  const w = WINDOW;
+  const q = state.search.trim().toLowerCase();
+  const rows = filtered(DATA.events)
+    .filter(r => !q || r.url.toLowerCase().includes(q))
+    .sort((a, b) => b.optimized_on.localeCompare(a.optimized_on));
+  table(document.getElementById("events"),
+    [["Optimized"], ["Post", "left url"], ["Status"], ["Google recrawl"], ["Clicks before"], ["Clicks after"], ["Change"], ["Site change"], ["Vs site"], ["Impr. before"], ["Impr. after"], ["Position before"], ["Position after"]],
+    rows.map(r => {
+      const vs = num(r[`clicks_vs_site_${w}d_pct`]);
+      const ch = num(r[`clicks_change_${w}d_pct`]);
+      const status = r.overlapping_event === "yes" ? "overlaps" : (r.status || "").replace("_ready", " ready");
+      return [
+        r.optimized_on,
+        { text: r.url.replace(/^https?:\/\//, ""), href: r.url },
+        status,
+        recrawlLabel(DATA.recrawl.get(r.event_id)),
+        fmt(num(r[`clicks_pre_${w}d`])), fmt(num(r[`clicks_post_${w}d`])),
+        signed(ch, fmtPct(ch)),
+        fmtPct(num(r[`site_clicks_change_${w}d_pct`])),
+        signed(vs, fmtPct(vs)),
+        fmt(num(r[`impressions_pre_${w}d`])), fmt(num(r[`impressions_post_${w}d`])),
+        fmtPos(num(r[`position_pre_${w}d`])), fmtPos(num(r[`position_post_${w}d`])),
+      ];
+    }));
+}
+
+function renderNewPosts() {
+  const posts = filtered(DATA.newPosts);
+  const cohorts = new Map();
+  for (const p of posts) {
+    const m = p.published_on.slice(0, 7);
+    if (!cohorts.has(m)) cohorts.set(m, []);
+    cohorts.get(m).push(p);
+  }
+  const avg = (rows, key) => {
+    const ready = rows.filter(r => r[key] !== "");
+    return ready.length ? [ready.reduce((s, r) => s + num(r[key]), 0) / ready.length, ready.length] : [null, 0];
+  };
+  const sum = (rows, key) => rows.filter(r => r[key] !== "").reduce((s, r) => s + num(r[key]), 0);
+  table(document.getElementById("cohorts"),
+    [["Published"], ["Posts"], ["With 8 weeks of data"], ["Total clicks"], ["Avg clicks per post"], ["Avg impressions per post"]],
+    [...cohorts.entries()].sort().reverse().map(([m, rows]) => {
+      const [avgClicks, ready] = avg(rows, "clicks_first_56d");
+      const [avgImpr] = avg(rows, "impressions_first_56d");
+      return [
+        monthLabel(m), fmt(rows.length), fmt(ready),
+        ready ? fmt(sum(rows, "clicks_first_56d")) : "–",
+        avgClicks == null ? "–" : avgClicks.toFixed(1),
+        avgImpr == null ? "–" : avgImpr.toFixed(1),
+      ];
+    }));
+  table(document.getElementById("new-posts"),
+    [["Published"], ["Post", "left url"], ["Clicks"], ["Impressions"], ["Avg position"]],
+    [...posts].sort((a, b) => b.published_on.localeCompare(a.published_on)).map(p => [
+      p.published_on, { text: p.url.replace(/^https?:\/\//, ""), href: p.url },
+      fmt(num(p.clicks_first_56d)), fmt(num(p.impressions_first_56d)), fmtPos(num(p.position_first_56d)),
+    ]));
+}
+
+function renderAll() {
+  renderTiles();
+  renderStreams();
+  renderMonthly();
+  renderEvents();
+  renderNewPosts();
+}
+
+async function load() {
+  const get = f => fetch(`data/${f}`, { cache: "no-cache" }).then(r => (r.ok ? r.text() : "")).then(t => (t ? parseCsv(t) : []));
+  const [events, newPosts, streams, recrawl] = await Promise.all([
+    get("optimization_event_metrics.csv"), get("new_post_metrics.csv"), get("stream_weekly.csv"), get("recrawl_status.csv"),
+  ]);
+  DATA = { events, newPosts, streams, recrawl: new Map(recrawl.map(r => [r.event_id, r])) };
+
+  const domains = [...new Set([...events, ...newPosts, ...streams].map(r => r.domain))].sort();
+  const select = document.getElementById("domain");
+  for (const d of domains) select.appendChild(el("option", { value: d }, d));
+
+  const updated = [...events, ...newPosts, ...streams].map(r => r.updated_on).filter(Boolean).sort().pop();
+  document.getElementById("updated").textContent = updated
+    ? `Data updated ${updated}. Search Console data lags by about 3 days; a window counts only once it is complete.`
+    : "No data yet.";
+  renderAll();
+}
+
+document.getElementById("domain").addEventListener("change", e => { state.domain = e.target.value; renderAll(); });
+document.getElementById("event-search").addEventListener("input", e => { state.search = e.target.value; renderEvents(); });
+load();
+</script>
+</body>
+</html>
